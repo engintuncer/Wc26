@@ -365,20 +365,28 @@ function renderGroups(matches,scores){
 function renderCalendar(matches,scores){
   const today=new Date(); const todayPT=new Date(today.getTime()+PT_OFFSET*3600*1000);
   const tY=todayPT.getUTCFullYear(),tM=todayPT.getUTCMonth(),tD=todayPT.getUTCDate();
-  const start=new Date(Date.UTC(2026,5,11)), end=new Date(Date.UTC(2026,6,19));
+  const tournStart=new Date(Date.UTC(2026,5,11)), tournEnd=new Date(Date.UTC(2026,6,19));
+  const todayUTC=new Date(Date.UTC(tY,tM,tD));
   // map day → matches
   const dayMap={};
   for(const m of matches){ if(!m.ptd)continue; const k=`${m.ptd.getUTCFullYear()}-${m.ptd.getUTCMonth()}-${m.ptd.getUTCDate()}`; (dayMap[k]=dayMap[k]||[]).push(m); }
-  // grid starts Sunday before Jun 11 (Jun 11 2026 = Thursday, getUTCDay=4)
-  const calStart=new Date(start); calStart.setUTCDate(calStart.getUTCDate()-((start.getUTCDay()+0)%7));
   const DH=["SUN","MON","TUE","WED","THU","FRI","SAT"];
   const MO=["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  // ── ROLLING 3-WEEK WINDOW ──
+  // anchor = today, but not before tournament start
+  let anchor=new Date(todayUTC);
+  if(anchor<tournStart) anchor=new Date(tournStart);
+  // grid begins on the Sunday of the anchor's week
+  const calStart=new Date(anchor); calStart.setUTCDate(calStart.getUTCDate()-anchor.getUTCDay());
+  // 3 weeks = 21 days (3 rows of 7)
+  const calEnd=new Date(calStart); calEnd.setUTCDate(calEnd.getUTCDate()+20);
+
   let cells='';
-  const last=new Date(end); last.setUTCDate(last.getUTCDate()+6);
-  for(let cur=new Date(calStart); cur<=last; cur.setUTCDate(cur.getUTCDate()+1)){
-    const inT=cur>=start&&cur<=end;
+  for(let cur=new Date(calStart); cur<=calEnd; cur.setUTCDate(cur.getUTCDate()+1)){
+    const inT=cur>=tournStart&&cur<=tournEnd;
     const isToday=cur.getUTCFullYear()===tY&&cur.getUTCMonth()===tM&&cur.getUTCDate()===tD;
-    const isPast=(cur<new Date(Date.UTC(tY,tM,tD)))&&inT;
+    const isPast=(cur<todayUTC)&&inT;
     let cls='cal-cell'; if(!inT)cls+=' cal-out';else if(isToday)cls+=' cal-today';else if(isPast)cls+=' cal-past';
     const dnCls='cal-day-num'+(!inT?' cal-out-num':'');
     const dayNum=`<div class="${dnCls}">${cur.getUTCDate()}</div>`;
@@ -404,7 +412,7 @@ function renderCalendar(matches,scores){
   }
   const hdr=DH.map(d=>`<div class="cal-dh">${d}</div>`).join('');
   document.getElementById('cal-panel').innerHTML=
-    `<div class="cal-wrap"><div class="cal-title">🗓 TOURNAMENT CALENDAR · PT<span class="cal-legend"><span class="leg-tur">■</span> Türkiye <span class="leg-today">■</span> Today <span class="leg-ko">■</span> KO</span></div><div class="cal-grid-hdr">${hdr}</div><div class="cal-grid">${cells}</div></div>`;
+    `<div class="cal-wrap"><div class="cal-title">🗓 NEXT 3 WEEKS · PT<span class="cal-legend"><span class="leg-tur">■</span> Türkiye <span class="leg-today">■</span> Today <span class="leg-ko">■</span> KO</span></div><div class="cal-grid-hdr">${hdr}</div><div class="cal-grid">${cells}</div></div>`;
 }
 
 // ── NEWS ──
