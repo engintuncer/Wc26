@@ -259,7 +259,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 <div id="hdr">
   <div class="hl"><span class="trophy">🏆</span>
     <div><div class="tm">FIFA WORLD CUP 2026</div>
-    <div class="ts">USA · Canada · Mexico &nbsp;|&nbsp; Jun 11 – Jul 19, 2026 &nbsp;|&nbsp; All times PT</div></div>
+    <div class="ts">USA · Canada · Mexico &nbsp;|&nbsp; Jun 11 – Jul 19, 2026 &nbsp;|&nbsp; <span id="tz-label">All times local</span></div></div>
   </div>
   <div id="cdblock">
     <div class="cdl">⏱ Countdown to the Final</div>
@@ -299,7 +299,18 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 //  Data: ESPN public API (scores + news), CORS-enabled
 // ═══════════════════════════════════════════════════════════════════
 
-const PT_OFFSET = -7; // PDT (UTC-7)
+// ── TIMEZONE: auto-detect viewer's local zone ──
+// All match times come from ESPN as UTC. We store the raw Date and let the
+// browser format everything in the viewer's local timezone automatically.
+const TZ_NAME = (()=>{ try{ return Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(e){ return ''; } })();
+// short label like "PT", "TRT", "BST" via the browser
+function tzAbbr(){
+  try{
+    const s=new Intl.DateTimeFormat('en-US',{timeZoneName:'short'}).formatToParts(new Date())
+      .find(p=>p.type==='timeZoneName');
+    return s?s.value:'';
+  }catch(e){ return ''; }
+}
 const ESPN_SCORE = d => `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${d}`;
 const ESPN_NEWS  = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/news?limit=40';
 
@@ -346,21 +357,18 @@ const KO = {
 };
 
 function shortVenue(c){ if(!c)return""; for(const k in VENUE){ if(c.toLowerCase().includes(k.toLowerCase()))return VENUE[k]; } return c.length>10?c.slice(0,10):c; }
-// convert UTC to PT by shifting hours
-function toPT(utcStr){
-  const d = new Date(utcStr);
-  // get UTC ms, add PT offset
-  const utcMs = d.getTime();
-  return new Date(utcMs + PT_OFFSET*3600*1000);
-}
-function fmtTime(ptd){
-  let h=ptd.getUTCHours(), m=ptd.getUTCMinutes();
+// Parse ESPN UTC string into a real Date (browser renders it in local time)
+function toLocal(utcStr){ return new Date(utcStr); }
+// format kickoff time in the viewer's local timezone
+function fmtTime(d){
+  let h=d.getHours(), m=d.getMinutes();
   const ap=h>=12?'pm':'am'; const h12=h%12||12;
   return m===0?`${h12}${ap}`:`${h12}:${String(m).padStart(2,'0')}${ap}`;
 }
-function fmtDayMon(ptd){
+// format day+month in local time
+function fmtDayMon(d){
   const mo=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  return `${ptd.getUTCDate()} ${mo[ptd.getUTCMonth()]}`;
+  return `${d.getDate()} ${mo[d.getMonth()]}`;
 }
 
 // ── FETCH ALL MATCHES ──
@@ -427,7 +435,7 @@ async function fetchAllMatches(){
           }
           let group='';
           for(const g in GROUPS){ if(GROUPS[g].includes(c1)&&GROUPS[g].includes(c2)){group=g;break;} }
-          const ptd=utc?toPT(utc):null;
+          const ptd=utc?toLocal(utc):null;
           matches.push({c1,c2,ptd,venue:shortVenue(city),stadium,city,group,s1,s2,status,form1,form2,bcast,events});
           scores[c1+'_'+c2]=[s1,s2,status];
           scores[c2+'_'+c1]=[s2,s1,status];
@@ -464,8 +472,8 @@ function scoreBadge(s1,s2,status){
 
 // ── RENDER GROUPS ──
 function renderGroups(matches,scores){
-  const nowPT=new Date(Date.now()+PT_OFFSET*3600*1000);
-  const tdY=nowPT.getUTCFullYear(),tdM=nowPT.getUTCMonth(),tdD=nowPT.getUTCDate();
+  const now=new Date();
+  const tdY=now.getFullYear(),tdM=now.getMonth(),tdD=now.getDate();
   let html='';
   for(const g in GROUPS){
     const ranked=calcStandings(g,matches);
@@ -482,7 +490,7 @@ function renderGroups(matches,scores){
       let badge,rcls='up';
       if(sc){badge=scoreBadge(sc[0],sc[1],sc[2]);rcls=sc[2]==='FT'?'ft':(sc[2].includes('LIVE')||sc[2]==='HT'?'live':'up');}
       else badge='<span class="svs">vs</span>';
-      const isToday=m.ptd&&m.ptd.getUTCFullYear()===tdY&&m.ptd.getUTCMonth()===tdM&&m.ptd.getUTCDate()===tdD;
+      const isToday=m.ptd&&m.ptd.getFullYear()===tdY&&m.ptd.getMonth()===tdM&&m.ptd.getDate()===tdD;
       const todayCls=isToday?' match-today':'';
       const dl=m.ptd?fmtDayMon(m.ptd):'?';
       mh+=`<div class="match ${rcls}${todayCls}"><span class="md">${dl}</span><span class="mt">${m.c1} ${badge} ${m.c2}</span><span class="mc">${m.venue}</span></div>`;
@@ -494,35 +502,34 @@ function renderGroups(matches,scores){
 
 // ── RENDER CALENDAR ──
 function renderCalendar(matches,scores){
-  const today=new Date(); const todayPT=new Date(today.getTime()+PT_OFFSET*3600*1000);
-  const tY=todayPT.getUTCFullYear(),tM=todayPT.getUTCMonth(),tD=todayPT.getUTCDate();
-  const tournStart=new Date(Date.UTC(2026,5,11)), tournEnd=new Date(Date.UTC(2026,6,19));
-  const todayUTC=new Date(Date.UTC(tY,tM,tD));
-  // map day → matches
+  const now=new Date();
+  const tY=now.getFullYear(),tM=now.getMonth(),tD=now.getDate();
+  // tournament bounds as plain calendar dates (no tz)
+  const tournStart=new Date(2026,5,11), tournEnd=new Date(2026,6,19);
+  const todayLocal=new Date(tY,tM,tD);
+  // map day → matches, keyed by each match's LOCAL date
   const dayMap={};
-  for(const m of matches){ if(!m.ptd)continue; const k=`${m.ptd.getUTCFullYear()}-${m.ptd.getUTCMonth()}-${m.ptd.getUTCDate()}`; (dayMap[k]=dayMap[k]||[]).push(m); }
+  for(const m of matches){ if(!m.ptd)continue; const k=`${m.ptd.getFullYear()}-${m.ptd.getMonth()}-${m.ptd.getDate()}`; (dayMap[k]=dayMap[k]||[]).push(m); }
   const DH=["SUN","MON","TUE","WED","THU","FRI","SAT"];
   const MO=["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   // ── ROLLING 3-WEEK WINDOW ──
-  // anchor = today, but not before tournament start
-  let anchor=new Date(todayUTC);
+  let anchor=new Date(todayLocal);
   if(anchor<tournStart) anchor=new Date(tournStart);
   // grid begins on the Sunday of the anchor's week
-  const calStart=new Date(anchor); calStart.setUTCDate(calStart.getUTCDate()-anchor.getUTCDay());
-  // 3 weeks = 21 days (3 rows of 7)
-  const calEnd=new Date(calStart); calEnd.setUTCDate(calEnd.getUTCDate()+20);
+  const calStart=new Date(anchor); calStart.setDate(calStart.getDate()-anchor.getDay());
+  const calEnd=new Date(calStart); calEnd.setDate(calEnd.getDate()+20);
 
   let cells='';
-  for(let cur=new Date(calStart); cur<=calEnd; cur.setUTCDate(cur.getUTCDate()+1)){
+  for(let cur=new Date(calStart); cur<=calEnd; cur.setDate(cur.getDate()+1)){
     const inT=cur>=tournStart&&cur<=tournEnd;
-    const isToday=cur.getUTCFullYear()===tY&&cur.getUTCMonth()===tM&&cur.getUTCDate()===tD;
-    const isPast=(cur<todayUTC)&&inT;
+    const isToday=cur.getFullYear()===tY&&cur.getMonth()===tM&&cur.getDate()===tD;
+    const isPast=(cur<todayLocal)&&inT;
     let cls='cal-cell'; if(!inT)cls+=' cal-out';else if(isToday)cls+=' cal-today';else if(isPast)cls+=' cal-past';
     const dnCls='cal-day-num'+(!inT?' cal-out-num':'');
-    const dayNum=`<div class="${dnCls}">${cur.getUTCDate()}</div>`;
-    const moLbl=(cur.getUTCDate()===1&&inT)?`<div class="cal-month-lbl">${MO[cur.getUTCMonth()+1]}</div>`:'';
-    const k=`${cur.getUTCFullYear()}-${cur.getUTCMonth()}-${cur.getUTCDate()}`;
+    const dayNum=`<div class="${dnCls}">${cur.getDate()}</div>`;
+    const moLbl=(cur.getDate()===1&&inT)?`<div class="cal-month-lbl">${MO[cur.getMonth()+1]}</div>`:'';
+    const k=`${cur.getFullYear()}-${cur.getMonth()}-${cur.getDate()}`;
     let content='';
     if(dayMap[k]){
       const dm=dayMap[k].sort((a,b)=>a.ptd-b.ptd);
@@ -536,15 +543,16 @@ function renderCalendar(matches,scores){
         content+=`<div class="cal-match${tc}">${m.c1}${mid}${m.c2}</div>`;
       }
     } else if(inT){
-      const kk=`${cur.getUTCMonth()+1}-${cur.getUTCDate()}`;
+      const kk=`${cur.getMonth()+1}-${cur.getDate()}`;
       if(KO[kk]){const lbl=KO[kk];const fc=lbl.includes('FINAL')?' cal-final':'';content=`<div class="cal-ko-label${fc}">${lbl}</div>`;}
     }
     const clickAttr = inT ? ` onclick="openDayOverlay('${k}')"` : '';
     cells+=`<div class="${cls}"${clickAttr}>${moLbl}${dayNum}${content}</div>`;
   }
   const hdr=DH.map(d=>`<div class="cal-dh">${d}</div>`).join('');
+  const tzLabel=tzAbbr()||'local';
   document.getElementById('cal-panel').innerHTML=
-    `<div class="cal-wrap"><div class="cal-title">🗓 NEXT 3 WEEKS · PT<span class="cal-legend"><span class="leg-tur">■</span> Türkiye <span class="leg-today">■</span> Today <span class="leg-ko">■</span> KO</span></div><div class="cal-grid-hdr">${hdr}</div><div class="cal-grid">${cells}</div></div>`;
+    `<div class="cal-wrap"><div class="cal-title">🗓 NEXT 3 WEEKS · ${tzLabel}<span class="cal-legend"><span class="leg-tur">■</span> Türkiye <span class="leg-today">■</span> Today <span class="leg-ko">■</span> KO</span></div><div class="cal-grid-hdr">${hdr}</div><div class="cal-grid">${cells}</div></div>`;
 }
 
 // ── NEWS ──
@@ -666,8 +674,8 @@ function matchCard(m){
   let badge,scoreHtml,scoreCls;
   if(m.status==='FT'){badge='<span class="ovm-badge ft">FULL TIME</span>';scoreHtml=`${m.s1} – ${m.s2}`;scoreCls='ft';}
   else if(m.status.startsWith('LIVE')||m.status==='HT'){const lc=m.status==='HT'?'HALF TIME':('LIVE '+m.status.slice(4).trim());badge=`<span class="ovm-badge live">${lc}</span>`;scoreHtml=`${m.s1} – ${m.s2}`;scoreCls='live';}
-  else{badge='<span class="ovm-badge up">UPCOMING</span>';scoreHtml=m.ptd?fmtTime(m.ptd)+' PT':'TBD';scoreCls='up';}
-  const dateStr=m.ptd?m.ptd.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',timeZone:'UTC'}):'';
+  else{badge='<span class="ovm-badge up">UPCOMING</span>';scoreHtml=m.ptd?fmtTime(m.ptd)+' '+(tzAbbr()||''):'TBD';scoreCls='up';}
+  const dateStr=m.ptd?m.ptd.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}):'';
   const meta=[];
   if(dateStr) meta.push(`<span><span class="lbl">📅</span> ${dateStr}</span>`);
   if(m.stadium) meta.push(`<span><span class="lbl">🏟</span> ${m.stadium}${m.city?', '+m.city:''}</span>`);
@@ -716,24 +724,24 @@ function openGroupOverlay(g){
 
 // ── CALENDAR DAY OVERLAY ──
 function openDayOverlay(dateKey){
-  // dateKey = "Y-M-D" (UTC of PT date)
+  // dateKey = "Y-M-D" in viewer's local date
   const [y,mo,d]=dateKey.split('-').map(Number);
-  const dayMatches=LATEST_MATCHES.filter(m=>m.ptd&&m.ptd.getUTCFullYear()===y&&m.ptd.getUTCMonth()===mo&&m.ptd.getUTCDate()===d).sort((a,b)=>a.ptd-b.ptd);
-  const dateObj=new Date(Date.UTC(y,mo,d));
-  const dateStr=dateObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric',timeZone:'UTC'});
+  const dayMatches=LATEST_MATCHES.filter(m=>m.ptd&&m.ptd.getFullYear()===y&&m.ptd.getMonth()===mo&&m.ptd.getDate()===d).sort((a,b)=>a.ptd-b.ptd);
+  const dateObj=new Date(y,mo,d);
+  const dateStr=dateObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
   let body;
   if(!dayMatches.length){
     body='<div style="color:var(--muted);font-size:15px;padding:20px 0">No group-stage matches scheduled this day.</div>';
   } else {
-    // group by group letter for clarity
     body=dayMatches.map(m=>{
       const grpTag=m.group?`<span style="color:var(--gold2);font-family:Oswald;font-size:12px;margin-right:8px">GRP ${m.group}</span>`:'';
       const card=matchCard(m);
       return card.replace('<div class="ovm-head">',`<div class="ovm-head">${grpTag}`);
     }).join('');
   }
+  const tzLabel=tzAbbr()||'local time';
   const html=`<div class="ov-title">🗓 ${dateStr}</div>
-    <div class="ov-sub">${dayMatches.length} match${dayMatches.length===1?'':'es'} · times in PT</div>
+    <div class="ov-sub">${dayMatches.length} match${dayMatches.length===1?'':'es'} · times in ${tzLabel}</div>
     ${body}
     <div class="ov-hint">Tap outside or ✕ to close</div>`;
   openOverlay(html);
@@ -973,6 +981,16 @@ async function loop(){
   setTimeout(loop, wait);
 }
 
+// set timezone label (auto-detected)
+(function(){
+  const ab=tzAbbr(), zone=TZ_NAME;
+  const lbl=document.getElementById('tz-label');
+  if(lbl){
+    if(ab && zone) lbl.textContent='Times: '+ab+' ('+zone+')';
+    else if(ab) lbl.textContent='Times: '+ab;
+    else lbl.textContent='All times local';
+  }
+})();
 setInterval(tick,1000); tick();
 setInterval(checkCountdowns,15000);  // audio: pre-game countdowns every 15s
 loop();
