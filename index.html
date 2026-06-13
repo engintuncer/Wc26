@@ -40,7 +40,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 #upd{font-size:9px;color:#2a3a55;margin-top:1px}
 
 /* BODY */
-#body{display:flex;height:calc(100vh - 54px - 64px)}
+#body{display:flex;height:calc(100vh - 54px - 144px)}
 #gp{display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(2,1fr);gap:3px;padding:3px;flex:0 0 62%;overflow:hidden}
 .gc{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:3px 4px;display:flex;flex-direction:column;min-width:0;overflow:hidden}
 .gh{font-family:'Oswald',sans-serif;font-size:10px;font-weight:700;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:2px;margin-bottom:2px;letter-spacing:1px}
@@ -90,17 +90,23 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .cal-ko-label{font-size:7px;font-weight:700;font-family:'Oswald',sans-serif;color:var(--blue);background:var(--ko-bg);border-radius:2px;padding:1px 3px;letter-spacing:.5px;text-align:center;margin-top:2px}
 .cal-final{color:var(--gold)!important;background:var(--today-bg)!important}
 
-/* TICKERS */
-#tickers{height:64px;background:var(--bg2);border-top:2px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
-.trow{display:flex;align-items:center;height:32px;overflow:hidden;border-bottom:1px solid var(--border)}
+/* TICKERS — 1.5x bigger, 3 rows */
+#tickers{height:144px;background:var(--bg2);border-top:2px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.trow{display:flex;align-items:center;height:48px;overflow:hidden;border-bottom:1px solid var(--border)}
 .trow:last-child{border-bottom:none}
-.tlabel{flex-shrink:0;width:112px;font-family:'Oswald',sans-serif;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:0 8px;border-right:2px solid var(--border);height:100%;display:flex;align-items:center}
+.tlabel{flex-shrink:0;width:150px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:0 12px;border-right:2px solid var(--border);height:100%;display:flex;align-items:center}
 .tlabel.wc{color:var(--gold);background:rgba(255,215,0,.07)}.tlabel.tr{color:#ff7070;background:rgba(220,50,50,.07)}
+.tlabel.sc{color:var(--green);background:rgba(0,201,122,.07)}
 .twrap{flex:1;overflow:hidden;height:100%;display:flex;align-items:center}
 .ttrack{display:flex;align-items:center;white-space:nowrap;animation:sl 50s linear infinite}
 .ttrack.slow{animation-duration:62s}
-.ti{font-size:11.5px;padding:0 24px;color:var(--text)}
+.ttrack.sc-track{animation-duration:40s}
+.ti{font-size:17px;padding:0 32px;color:var(--text)}
 .ti.wc::before{content:"⚽  "}.ti.tr::before{content:"🇹🇷  "}
+.ti.sc{font-family:'Oswald',sans-serif;letter-spacing:.5px}
+.sc-rank{color:var(--gold2);font-weight:700;margin-right:6px}
+.sc-goals{color:var(--green);font-weight:700;margin-left:8px}
+.sc-team{color:var(--muted);font-size:14px;margin-left:5px}
 @keyframes sl{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
 /* LOADING + ERROR */
@@ -133,9 +139,9 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
   .cal-match{font-size:8.5px;line-height:1.4}.cal-vs{font-size:8px}
   .cal-day-num{font-size:9px}
   #tickers{height:auto}
-  .trow{height:38px}
-  .ti{font-size:13px}
-  .tlabel{width:90px;font-size:9px}
+  .trow{height:52px}
+  .ti{font-size:18px}
+  .tlabel{width:120px;font-size:12px}
 }
 </style>
 </head>
@@ -179,6 +185,10 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
   <div class="trow">
     <div class="tlabel tr">🇹🇷 Türkiye WC</div>
     <div class="twrap"><div class="ttrack slow" id="tr-track"></div></div>
+  </div>
+  <div class="trow">
+    <div class="tlabel sc">⚽ Top Scorers</div>
+    <div class="twrap"><div class="ttrack sc-track" id="sc-track"></div></div>
   </div>
 </div>
 
@@ -411,12 +421,46 @@ async function fetchNews(){
   }catch(e){console.warn('news fail',e);}
   if(!wc.length)wc=["Mexico opens WC26 with 2-0 win over South Africa","USMNT crush Paraguay in opener","Canada draw 1-1 with Bosnia","World Cup 2026 underway across North America","48 teams competing in expanded format"];
   if(!tr.length)tr=["Türkiye face Australia in Group D opener","Çalhanoğlu leads Türkiye at World Cup 2026","Türkiye vs USA Group D decider Jun 25","Montella's side ready to surprise","Turkish fans flock to North America"];
-  return {wc:wc.slice(0,6),tr:tr.slice(0,6)};
+  return {wc:wc.slice(0,10),tr:tr.slice(0,10)};
 }
 function renderNews(news){
   const mk=(items,cls)=>{const s=items.map(h=>`<span class="ti ${cls}">${h}</span>`).join('');return s+s;};
   document.getElementById('wc-track').innerHTML=mk(news.wc,'wc');
   document.getElementById('tr-track').innerHTML=mk(news.tr,'tr');
+}
+
+// ── TOP SCORERS ──
+async function fetchScorers(){
+  try{
+    const r=await fetch('https://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/seasons/2026/types/1/leaders',{cache:'no-store'});
+    const data=await r.json();
+    const cat=(data.categories||[]).find(c=>c.name==='goalsLeaders');
+    if(!cat||!cat.leaders.length)return [];
+    const top=cat.leaders.slice(0,5);
+    const out=await Promise.all(top.map(async ld=>{
+      try{
+        const aref=ld.athlete.$ref.replace('http://','https://');
+        const tref=ld.team.$ref.replace('http://','https://');
+        const [a,t]=await Promise.all([
+          fetch(aref,{cache:'no-store'}).then(r=>r.json()),
+          fetch(tref,{cache:'no-store'}).then(r=>r.json())
+        ]);
+        return {name:a.displayName||a.fullName||'?', team:t.abbreviation||'', goals:Math.round(ld.value)};
+      }catch(e){return null;}
+    }));
+    return out.filter(Boolean);
+  }catch(e){console.warn('scorers fail',e);return [];}
+}
+function renderScorers(scorers){
+  const track=document.getElementById('sc-track');
+  if(!scorers.length){
+    track.innerHTML='<span class="ti sc">⚽ Top scorer race begins as the tournament kicks off…</span>';
+    return;
+  }
+  const items=scorers.map((s,i)=>
+    `<span class="ti sc"><span class="sc-rank">${i+1}.</span>${s.name}<span class="sc-team">${s.team}</span><span class="sc-goals">${s.goals}⚽</span></span>`
+  ).join('');
+  track.innerHTML=items+items+items; // triple for a short list to fill the loop
 }
 
 // ── CLOCK + COUNTDOWN ──
@@ -447,9 +491,11 @@ async function refresh(){
     const {matches,scores}=await fetchAllMatches();
     if(!matches.length) throw new Error('no matches returned');
     const news=await fetchNews();
+    const scorers=await fetchScorers();
     renderGroups(matches,scores);
     renderCalendar(matches,scores);
     renderNews(news);
+    renderScorers(scorers);
     const now=new Date();
     document.getElementById('upd').textContent='Updated: '+now.toLocaleTimeString()+' · ESPN';
     document.getElementById('loading').style.display='none';
