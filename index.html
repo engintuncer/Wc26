@@ -310,11 +310,17 @@ async function fetchAllMatches(){
       for(const e of events){
         const utc=e.date;
         const stName=e.status?.type?.name||'';
+        const stState=e.status?.type?.state||'';   // 'pre' | 'in' | 'post'
         const stClock=e.status?.displayClock||'';
         let status='upcoming';
-        if(stName.includes('FULL_TIME')||stName.includes('FINAL')) status='FT';
-        else if(stName.includes('IN_PROGRESS')) status='LIVE '+stClock;
-        else if(stName.includes('HALF_TIME')) status='HT';
+        // 'post' = finished, 'in' = live (any half/period), 'pre' = not started
+        if(stState==='post' || stName.includes('FULL_TIME') || stName.includes('FINAL') || stName.includes('FT')){
+          status='FT';
+        } else if(stName.includes('HALF_TIME') || stName.includes('HALFTIME')){
+          status='HT';
+        } else if(stState==='in' || stName.includes('IN_PROGRESS') || stName.includes('FIRST_HALF') || stName.includes('SECOND_HALF') || stName.includes('EXTRA') || stName.includes('PENALTIES')){
+          status='LIVE '+stClock;
+        }
         for(const comp of (e.competitions||[])){
           const teams=comp.competitors||[]; if(teams.length<2)continue;
           const home=teams.find(t=>t.homeAway==='home')||teams[0];
