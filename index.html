@@ -40,7 +40,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 #upd{font-size:9px;color:#2a3a55;margin-top:1px}
 
 /* BODY */
-#body{display:flex;height:calc(100vh - 54px - 96px)}
+#body{display:flex;height:calc(100vh - 54px - 144px)}
 #gp{display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(2,1fr);gap:3px;padding:3px;flex:0 0 62%;overflow:hidden}
 .gc{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:3px 4px;display:flex;flex-direction:column;min-width:0;overflow:hidden}
 .gh{font-family:'Oswald',sans-serif;font-size:10px;font-weight:700;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:2px;margin-bottom:2px;letter-spacing:1px}
@@ -57,6 +57,9 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .gm{flex:1;overflow:hidden}
 .match{display:flex;align-items:center;font-size:7.5px;border-bottom:1px solid #0e1828;padding:1px 0;gap:2px}
 .match.ft{background:rgba(0,90,40,.07)}.match.live{background:rgba(180,0,0,.09)}
+.match.match-today{background:rgba(255,215,0,.14);border-left:2px solid var(--gold);padding-left:2px}
+.match.match-today .mt{color:#fff}
+.match.match-today .md{color:var(--gold);font-weight:700}
 .md{color:var(--muted);font-size:7px;flex-shrink:0;width:28px}
 .mt{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:7.5px;font-family:'Oswald',sans-serif;letter-spacing:.3px}
 .mc{color:var(--muted);font-size:6.5px;flex-shrink:0;text-align:right;max-width:44px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -73,13 +76,21 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .leg-tur{color:#e74c3c}.leg-today{color:var(--gold)}.leg-ko{color:var(--blue)}
 .cal-grid-hdr{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px;flex-shrink:0}
 .cal-dh{font-size:7.5px;font-weight:700;text-align:center;color:var(--muted);font-family:'Oswald',sans-serif;letter-spacing:.5px;padding:1px 0}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:2px;flex:1;overflow:hidden}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:1fr;gap:5px;flex:1;overflow:visible;padding:4px}
 .cal-cell{background:var(--bg2);border:1px solid var(--border);border-radius:3px;padding:2px 3px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .cal-out{background:transparent;border-color:transparent}
-.cal-today{background:var(--today-bg);border-color:var(--gold)!important;border-width:1.5px}
+.cal-today{background:var(--today-bg);border:2px solid var(--gold)!important;
+  transform:scale(1.5);z-index:10;position:relative;
+  box-shadow:0 0 16px rgba(255,215,0,.55);border-radius:4px}
+.cal-today .cal-day-num{color:var(--gold);font-size:10px}
+.cal-today .cal-match{font-size:9px;line-height:1.45}
+.cal-today .cal-vs{font-size:8px}
+.cal-today .cal-score-ft,.cal-today .cal-score-live{font-size:9px}
+.cal-today::after{content:"TODAY";position:absolute;top:-7px;right:3px;
+  font-size:5.5px;font-weight:700;color:#1a1200;background:var(--gold);
+  padding:0 3px;border-radius:2px;font-family:'Oswald',sans-serif;letter-spacing:.5px}
 .cal-past{opacity:.6}
 .cal-day-num{font-size:7.5px;font-weight:700;color:var(--muted);line-height:1;margin-bottom:1px;font-family:'Oswald',sans-serif}
-.cal-today .cal-day-num{color:var(--gold)}
 .cal-out-num{color:#1a2840}
 .cal-month-lbl{font-size:6.5px;color:var(--gold2);font-weight:700;letter-spacing:1px;text-transform:uppercase;line-height:1;margin-bottom:1px}
 .cal-match{font-size:7px;line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);font-family:'Oswald',sans-serif;letter-spacing:.3px}
@@ -89,28 +100,24 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .cal-score-live{color:var(--live);font-weight:700;font-size:7px;animation:pulse 1.2s infinite}
 .cal-ko-label{font-size:7px;font-weight:700;font-family:'Oswald',sans-serif;color:var(--blue);background:var(--ko-bg);border-radius:2px;padding:1px 3px;letter-spacing:.5px;text-align:center;margin-top:2px}
 .cal-final{color:var(--gold)!important;background:var(--today-bg)!important}
-/* TOP SCORERS BOX (day-sized cell in calendar) */
-.cal-scorers{background:linear-gradient(160deg,rgba(0,201,122,.12),var(--bg2));border-color:var(--green)!important;justify-content:flex-start}
-.cal-sc-title{font-size:7px;font-weight:700;color:var(--green);font-family:'Oswald',sans-serif;letter-spacing:.5px;line-height:1;margin-bottom:2px;border-bottom:1px solid rgba(0,201,122,.3);padding-bottom:1px}
-.cal-sc-list{display:flex;flex-direction:column;gap:1px;flex:1;justify-content:space-evenly}
-.cal-sc-row{display:flex;align-items:center;font-size:7px;gap:2px;line-height:1.1}
-.cal-sc-rank{color:var(--gold2);font-weight:700;width:7px;flex-shrink:0;font-family:'Oswald',sans-serif}
-.cal-sc-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);font-family:'Oswald',sans-serif;font-weight:600}
-.cal-sc-tm{color:var(--muted);font-size:6px;flex-shrink:0}
-.cal-sc-g{color:var(--green);font-weight:700;flex-shrink:0;width:9px;text-align:right}
-.cal-sc-empty{font-size:6.5px;color:var(--muted);font-style:italic;margin-top:4px}
 
-/* TICKERS — 1.5x bigger, 2 rows */
-#tickers{height:96px;background:var(--bg2);border-top:2px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+/* TICKERS — 1.5x bigger, 3 rows */
+#tickers{height:144px;background:var(--bg2);border-top:2px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
 .trow{display:flex;align-items:center;height:48px;overflow:hidden;border-bottom:1px solid var(--border)}
 .trow:last-child{border-bottom:none}
 .tlabel{flex-shrink:0;width:150px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:0 12px;border-right:2px solid var(--border);height:100%;display:flex;align-items:center}
 .tlabel.wc{color:var(--gold);background:rgba(255,215,0,.07)}.tlabel.tr{color:#ff7070;background:rgba(220,50,50,.07)}
+.tlabel.sc{color:var(--green);background:rgba(0,201,122,.07)}
 .twrap{flex:1;overflow:hidden;height:100%;display:flex;align-items:center}
 .ttrack{display:flex;align-items:center;white-space:nowrap;animation:sl 50s linear infinite}
 .ttrack.slow{animation-duration:62s}
+.ttrack.sc-track{animation-duration:42s}
 .ti{font-size:17px;padding:0 32px;color:var(--text)}
 .ti.wc::before{content:"⚽  "}.ti.tr::before{content:"🇹🇷  "}
+.ti.sc{font-family:'Oswald',sans-serif;letter-spacing:.5px}
+.sc-rank{color:var(--gold2);font-weight:700;margin-right:6px}
+.sc-goals{color:var(--green);font-weight:700;margin-left:8px}
+.sc-team{color:var(--muted);font-size:14px;margin-left:5px}
 @keyframes sl{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
 /* LOADING + ERROR */
@@ -121,6 +128,18 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-12px)}}
 #err-banner{display:none;position:fixed;top:0;left:0;right:0;background:#3a0000;color:#ff7070;
   font-size:12px;padding:5px 14px;z-index:90;text-align:center;font-weight:700}
+/* AUDIO CONTROLS */
+#audio-enable{position:fixed;bottom:16px;right:16px;z-index:95;
+  background:linear-gradient(135deg,var(--gold),var(--gold2));color:#1a1200;
+  border:none;border-radius:24px;padding:12px 20px;font-family:'Oswald',sans-serif;
+  font-size:14px;font-weight:700;letter-spacing:.5px;cursor:pointer;
+  box-shadow:0 4px 16px rgba(0,0,0,.5);animation:pulse-btn 2s infinite}
+@keyframes pulse-btn{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+#audio-toggle{display:none;position:fixed;bottom:14px;right:14px;z-index:95;
+  width:38px;height:38px;align-items:center;justify-content:center;
+  background:var(--bg3);color:var(--gold);border:1px solid var(--border);
+  border-radius:50%;font-size:18px;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.4)}
+#audio-toggle:hover{border-color:var(--gold)}
 
 /* MOBILE PORTRAIT: stack everything vertically, scrollable */
 @media (max-aspect-ratio:1/1){
@@ -159,6 +178,9 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 
 <div id="err-banner"></div>
 
+<button id="audio-enable" onclick="enableAudio()">🔊 Enable Match Alerts</button>
+<button id="audio-toggle" onclick="toggleMute()" title="Mute alerts">🔊</button>
+
 <div id="hdr">
   <div class="hl"><span class="trophy">🏆</span>
     <div><div class="tm">FIFA WORLD CUP 2026</div>
@@ -189,6 +211,10 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
   <div class="trow">
     <div class="tlabel tr">🇹🇷 Türkiye WC</div>
     <div class="twrap"><div class="ttrack slow" id="tr-track"></div></div>
+  </div>
+  <div class="trow">
+    <div class="tlabel sc">⚽ Top Scorers</div>
+    <div class="twrap"><div class="ttrack sc-track" id="sc-track"></div></div>
   </div>
 </div>
 
@@ -337,6 +363,8 @@ function scoreBadge(s1,s2,status){
 
 // ── RENDER GROUPS ──
 function renderGroups(matches,scores){
+  const nowPT=new Date(Date.now()+PT_OFFSET*3600*1000);
+  const tdY=nowPT.getUTCFullYear(),tdM=nowPT.getUTCMonth(),tdD=nowPT.getUTCDate();
   let html='';
   for(const g in GROUPS){
     const ranked=calcStandings(g,matches);
@@ -353,8 +381,10 @@ function renderGroups(matches,scores){
       let badge,rcls='up';
       if(sc){badge=scoreBadge(sc[0],sc[1],sc[2]);rcls=sc[2]==='FT'?'ft':(sc[2].includes('LIVE')||sc[2]==='HT'?'live':'up');}
       else badge='<span class="svs">vs</span>';
+      const isToday=m.ptd&&m.ptd.getUTCFullYear()===tdY&&m.ptd.getUTCMonth()===tdM&&m.ptd.getUTCDate()===tdD;
+      const todayCls=isToday?' match-today':'';
       const dl=m.ptd?fmtDayMon(m.ptd):'?';
-      mh+=`<div class="match ${rcls}"><span class="md">${dl}</span><span class="mt">${m.c1} ${badge} ${m.c2}</span><span class="mc">${m.venue}</span></div>`;
+      mh+=`<div class="match ${rcls}${todayCls}"><span class="md">${dl}</span><span class="mt">${m.c1} ${badge} ${m.c2}</span><span class="mc">${m.venue}</span></div>`;
     }
     html+=`<div class="gc"><div class="gh">GRP ${g}</div><div class="std">${std}</div><div class="div-line"></div><div class="gm">${mh}</div></div>`;
   }
@@ -362,7 +392,7 @@ function renderGroups(matches,scores){
 }
 
 // ── RENDER CALENDAR ──
-function renderCalendar(matches,scores,scorers){
+function renderCalendar(matches,scores){
   const today=new Date(); const todayPT=new Date(today.getTime()+PT_OFFSET*3600*1000);
   const tY=todayPT.getUTCFullYear(),tM=todayPT.getUTCMonth(),tD=todayPT.getUTCDate();
   const tournStart=new Date(Date.UTC(2026,5,11)), tournEnd=new Date(Date.UTC(2026,6,19));
@@ -379,23 +409,10 @@ function renderCalendar(matches,scores,scorers){
   if(anchor<tournStart) anchor=new Date(tournStart);
   // grid begins on the Sunday of the anchor's week
   const calStart=new Date(anchor); calStart.setUTCDate(calStart.getUTCDate()-anchor.getUTCDay());
-  // 3 weeks = 21 cells. First cell is the Top Scorers box, so 20 day cells follow.
-  const calEnd=new Date(calStart); calEnd.setUTCDate(calEnd.getUTCDate()+19);
+  // 3 weeks = 21 days (3 rows of 7)
+  const calEnd=new Date(calStart); calEnd.setUTCDate(calEnd.getUTCDate()+20);
 
-  // ── TOP SCORERS BOX (fixed first cell, day-sized) ──
-  let scorersBox='<div class="cal-cell cal-scorers"><div class="cal-sc-title">⚽ TOP SCORERS</div>';
-  if(scorers && scorers.length){
-    scorersBox+='<div class="cal-sc-list">';
-    scorers.slice(0,5).forEach((s,i)=>{
-      scorersBox+=`<div class="cal-sc-row"><span class="cal-sc-rank">${i+1}</span><span class="cal-sc-name">${s.name}</span><span class="cal-sc-tm">${s.team}</span><span class="cal-sc-g">${s.goals}</span></div>`;
-    });
-    scorersBox+='</div>';
-  } else {
-    scorersBox+='<div class="cal-sc-empty">Race begins soon…</div>';
-  }
-  scorersBox+='</div>';
-
-  let cells=scorersBox;
+  let cells='';
   for(let cur=new Date(calStart); cur<=calEnd; cur.setUTCDate(cur.getUTCDate()+1)){
     const inT=cur>=tournStart&&cur<=tournEnd;
     const isToday=cur.getUTCFullYear()===tY&&cur.getUTCMonth()===tM&&cur.getUTCDate()===tD;
@@ -423,8 +440,9 @@ function renderCalendar(matches,scores,scorers){
     }
     cells+=`<div class="${cls}">${moLbl}${dayNum}${content}</div>`;
   }
+  const hdr=DH.map(d=>`<div class="cal-dh">${d}</div>`).join('');
   document.getElementById('cal-panel').innerHTML=
-    `<div class="cal-wrap"><div class="cal-title">🗓 NEXT 3 WEEKS · PT<span class="cal-legend"><span class="leg-tur">■</span> Türkiye <span class="leg-today">■</span> Today <span class="leg-ko">■</span> KO</span></div><div class="cal-grid">${cells}</div></div>`;
+    `<div class="cal-wrap"><div class="cal-title">🗓 NEXT 3 WEEKS · PT<span class="cal-legend"><span class="leg-tur">■</span> Türkiye <span class="leg-today">■</span> Today <span class="leg-ko">■</span> KO</span></div><div class="cal-grid-hdr">${hdr}</div><div class="cal-grid">${cells}</div></div>`;
 }
 
 // ── NEWS ──
@@ -471,6 +489,17 @@ async function fetchScorers(){
     return out.filter(Boolean);
   }catch(e){console.warn('scorers fail',e);return [];}
 }
+function renderScorers(scorers){
+  const track=document.getElementById('sc-track');
+  if(!scorers.length){
+    track.innerHTML='<span class="ti sc">⚽ Top scorer race begins as the tournament kicks off…</span>';
+    return;
+  }
+  const items=scorers.map((s,i)=>
+    `<span class="ti sc"><span class="sc-rank">${i+1}.</span>${s.name}<span class="sc-team">${s.team}</span><span class="sc-goals">${s.goals}⚽</span></span>`
+  ).join('');
+  track.innerHTML=items+items+items; // triple for short list to fill loop
+}
 
 // ── CLOCK + COUNTDOWN ──
 const FINAL=new Date('2026-07-19T19:00:00Z');
@@ -492,8 +521,202 @@ function tick(){
   document.getElementById('cd').textContent=d+'d '+pad(h2)+'h '+pad(m2)+'m '+pad(s2)+'s';
 }
 
-// ── MAIN REFRESH ──
-let lastGood=null;
+// ═══════════════════════════════════════════════════════════════════
+//  AUDIO ALERT SYSTEM — generated sounds + spoken announcements
+//  No audio files, no copyright. Web Audio API + SpeechSynthesis.
+// ═══════════════════════════════════════════════════════════════════
+let AUDIO_ON=false;
+let audioCtx=null;
+const FULL_NAME={MEX:"Mexico",RSA:"South Africa",KOR:"South Korea",CZE:"Czechia",
+  CAN:"Canada",BIH:"Bosnia",QAT:"Qatar",SUI:"Switzerland",BRA:"Brazil",MAR:"Morocco",
+  HAI:"Haiti",SCO:"Scotland",USA:"USA",PAR:"Paraguay",AUS:"Australia",TUR:"Türkiye",
+  GER:"Germany",CUW:"Curacao",CIV:"Ivory Coast",ECU:"Ecuador",NED:"Netherlands",
+  JPN:"Japan",SWE:"Sweden",TUN:"Tunisia",BEL:"Belgium",EGY:"Egypt",IRN:"Iran",
+  NZL:"New Zealand",ESP:"Spain",CPV:"Cape Verde",KSA:"Saudi Arabia",URU:"Uruguay",
+  FRA:"France",SEN:"Senegal",IRQ:"Iraq",NOR:"Norway",ARG:"Argentina",ALG:"Algeria",
+  AUT:"Austria",JOR:"Jordan",POR:"Portugal",COD:"DR Congo",UZB:"Uzbekistan",
+  COL:"Colombia",ENG:"England",CRO:"Croatia",GHA:"Ghana",PAN:"Panama"};
+
+// memory of what we've already announced (fire-once over many hours)
+const fired=new Set();          // countdown/kickoff/fulltime keys
+const lastScores={};            // matchKey -> "s1-s2" to detect goal changes
+
+function ensureCtx(){
+  if(!audioCtx){ audioCtx=new (window.AudioContext||window.webkitAudioContext)(); }
+  if(audioCtx.state==='suspended') audioCtx.resume();
+  return audioCtx;
+}
+
+// ── Speech ──
+function speak(text){
+  if(!AUDIO_ON || !window.speechSynthesis) return;
+  try{
+    const u=new SpeechSynthesisUtterance(text);
+    u.rate=0.95; u.pitch=1.0; u.volume=1.0; u.lang='en-US';
+    window.speechSynthesis.cancel(); // don't queue stale
+    window.speechSynthesis.speak(u);
+  }catch(e){}
+}
+
+// ── Referee whistle (generated) ──
+function whistle(blasts=1, dur=0.35){
+  if(!AUDIO_ON) return;
+  const ctx=ensureCtx(); let t=ctx.currentTime;
+  for(let i=0;i<blasts;i++){
+    const osc=ctx.createOscillator(), g=ctx.createGain(), lfo=ctx.createOscillator(), lg=ctx.createGain();
+    osc.type='sine'; osc.frequency.value=2300;
+    lfo.type='sine'; lfo.frequency.value=22; lg.gain.value=120; // trill
+    lfo.connect(lg); lg.connect(osc.frequency);
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(0.25,t+0.03);
+    g.gain.setValueAtTime(0.25,t+dur-0.05);
+    g.gain.linearRampToValueAtTime(0,t+dur);
+    osc.connect(g); g.connect(ctx.destination);
+    osc.start(t); lfo.start(t); osc.stop(t+dur); lfo.stop(t+dur);
+    t+=dur+0.12;
+  }
+}
+
+// ── Crowd cheer / roar (generated filtered noise swell) ──
+function cheer(dur=2.2){
+  if(!AUDIO_ON) return;
+  const ctx=ensureCtx(); const t=ctx.currentTime;
+  const bufSize=ctx.sampleRate*dur;
+  const buf=ctx.createBuffer(1,bufSize,ctx.sampleRate);
+  const data=buf.getChannelData(0);
+  for(let i=0;i<bufSize;i++) data[i]=Math.random()*2-1; // white noise
+  const src=ctx.createBufferSource(); src.buffer=buf;
+  const bp=ctx.createBiquadFilter(); bp.type='bandpass'; bp.frequency.value=900; bp.Q.value=0.7;
+  const g=ctx.createGain();
+  g.gain.setValueAtTime(0,t);
+  g.gain.linearRampToValueAtTime(0.5,t+0.4);   // swell up
+  g.gain.setValueAtTime(0.5,t+dur*0.55);
+  g.gain.linearRampToValueAtTime(0,t+dur);     // fade
+  // rising filter for "roar" feel
+  bp.frequency.setValueAtTime(500,t);
+  bp.frequency.linearRampToValueAtTime(1400,t+0.6);
+  bp.frequency.linearRampToValueAtTime(800,t+dur);
+  src.connect(bp); bp.connect(g); g.connect(ctx.destination);
+  src.start(t); src.stop(t+dur);
+}
+
+// ── Soft chime (for upcoming Türkiye highlight etc) ──
+function chime(){
+  if(!AUDIO_ON) return;
+  const ctx=ensureCtx(); let t=ctx.currentTime;
+  [880,1175,1480].forEach((f,i)=>{
+    const o=ctx.createOscillator(), g=ctx.createGain();
+    o.type='sine'; o.frequency.value=f;
+    g.gain.setValueAtTime(0,t+i*0.12);
+    g.gain.linearRampToValueAtTime(0.18,t+i*0.12+0.02);
+    g.gain.exponentialRampToValueAtTime(0.001,t+i*0.12+0.5);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(t+i*0.12); o.stop(t+i*0.12+0.5);
+  });
+}
+
+// ── GOAL sequence: cheer + spoken ──
+function goalAlert(c1,c2){
+  cheer(2.4);
+  setTimeout(()=>speak('Goal!'),900);
+}
+
+// ── KICKOFF: whistle + spoken ──
+function kickoffAlert(c1,c2){
+  whistle(1,0.4);
+  const n1=FULL_NAME[c1]||c1, n2=FULL_NAME[c2]||c2;
+  setTimeout(()=>speak(`Kickoff! ${n1} versus ${n2}`),700);
+}
+
+// ── FULL TIME: long triple whistle + spoken ──
+function fulltimeAlert(c1,c2,s1,s2){
+  whistle(3,0.5);
+  const n1=FULL_NAME[c1]||c1, n2=FULL_NAME[c2]||c2;
+  setTimeout(()=>speak(`Full time. ${n1} ${s1}, ${n2} ${s2}`),1800);
+}
+
+// ── COUNTDOWN checker — runs every 15s against LATEST_MATCHES ──
+const CD_STEPS=[
+  {min:120,label:'2 hours'},{min:60,label:'1 hour'},{min:30,label:'30 minutes'},
+  {min:10,label:'10 minutes'},{min:5,label:'5 minutes'}
+];
+function matchKey(m){
+  const t=m.ptd?m.ptd.getTime():0;
+  return `${m.c1}_${m.c2}_${t}`;
+}
+function checkCountdowns(){
+  if(!AUDIO_ON) return;
+  const now=Date.now();
+  for(const m of LATEST_MATCHES){
+    if(!m.ptd) continue;
+    if(m.status!=='upcoming') continue;
+    const koMs=m.ptd.getTime();
+    const minsUntil=(koMs-now)/60000;
+    const n1=FULL_NAME[m.c1]||m.c1, n2=FULL_NAME[m.c2]||m.c2;
+    // countdown steps
+    for(const step of CD_STEPS){
+      // fire when within a 20s window just past the threshold
+      if(minsUntil<=step.min && minsUntil>step.min-0.5){
+        const key=matchKey(m)+'_cd'+step.min;
+        if(!fired.has(key)){
+          fired.add(key);
+          speak(`${step.label} until kickoff. ${n1} versus ${n2}`);
+        }
+      }
+    }
+    // kickoff (at or just past 0)
+    if(minsUntil<=0 && minsUntil>-0.5){
+      const key=matchKey(m)+'_ko';
+      if(!fired.has(key)){ fired.add(key); kickoffAlert(m.c1,m.c2); }
+    }
+  }
+}
+
+// ── GOAL + FULL-TIME detection (called each data refresh) ──
+function checkGoalsAndFulltime(matches,scores){
+  for(const m of matches){
+    const mk=m.c1+'_'+m.c2;
+    const cur=`${m.s1}-${m.s2}`;
+    const prev=lastScores[mk];
+    // goal: score increased during a live game
+    if(prev!==undefined && prev!==cur && (m.status.includes('LIVE')||m.status==='HT')){
+      const [ps1,ps2]=prev.split('-').map(Number);
+      if((m.s1>ps1)||(m.s2>ps2)){ goalAlert(m.c1,m.c2); }
+    }
+    lastScores[mk]=cur;
+    // full time: just transitioned to FT
+    if(m.status==='FT'){
+      const key=matchKey(m)+'_ft';
+      if(!fired.has(key) && AUDIO_ON){
+        // only announce if we'd previously seen it live (avoid old games on first load)
+        if(prev!==undefined){ fired.add(key); fulltimeAlert(m.c1,m.c2,m.s1,m.s2); }
+        else fired.add(key); // seen for first time already-final: mark, stay silent
+      }
+    }
+  }
+}
+
+// ── ENABLE / MUTE UI ──
+function enableAudio(){
+  AUDIO_ON=true;
+  ensureCtx();
+  // prime speech (some browsers need a first utterance triggered by user gesture)
+  try{ window.speechSynthesis.cancel(); }catch(e){}
+  document.getElementById('audio-enable').style.display='none';
+  document.getElementById('audio-toggle').style.display='flex';
+  chime();
+  setTimeout(()=>speak('Match alerts enabled'),400);
+}
+function toggleMute(){
+  AUDIO_ON=!AUDIO_ON;
+  const btn=document.getElementById('audio-toggle');
+  btn.textContent=AUDIO_ON?'🔊':'🔇';
+  btn.title=AUDIO_ON?'Mute alerts':'Unmute alerts';
+  if(AUDIO_ON){ ensureCtx(); chime(); }
+  else { try{window.speechSynthesis.cancel();}catch(e){} }
+}
+
+
 async function refresh(){
   const eb=document.getElementById('err-banner');
   try{
@@ -502,23 +725,25 @@ async function refresh(){
     const news=await fetchNews();
     const scorers=await fetchScorers();
     renderGroups(matches,scores);
-    renderCalendar(matches,scores,scorers);
+    renderCalendar(matches,scores);
     renderNews(news);
+    renderScorers(scorers);
+    checkGoalsAndFulltime(matches,scores);  // audio: goals + full-time
+    LATEST_MATCHES=matches; LATEST_SCORES=scores;
     const now=new Date();
     document.getElementById('upd').textContent='Updated: '+now.toLocaleTimeString()+' · ESPN';
     document.getElementById('loading').style.display='none';
     eb.style.display='none';
     lastGood=Date.now();
-    // adaptive: live game → 2 min, else 10 min
+    // adaptive: live game → 1 min (faster for goal sounds), else 10 min
     const live=matches.some(m=>m.status.includes('LIVE')||m.status==='HT');
-    return live?120000:600000;
+    return live?60000:600000;
   }catch(e){
     console.error('refresh failed',e);
     eb.style.display='block';
     eb.textContent='⚠ Live data fetch failed — retrying… ('+e.message+')';
-    // keep loading screen if never succeeded
     if(lastGood) document.getElementById('loading').style.display='none';
-    return 60000; // retry in 1 min
+    return 60000;
   }
 }
 
@@ -528,6 +753,7 @@ async function loop(){
 }
 
 setInterval(tick,1000); tick();
+setInterval(checkCountdowns,15000);  // audio: pre-game countdowns every 15s
 loop();
 </script>
 </body>
