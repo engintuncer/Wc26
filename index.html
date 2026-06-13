@@ -40,7 +40,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 #upd{font-size:9px;color:#2a3a55;margin-top:1px}
 
 /* BODY */
-#body{display:flex;height:calc(100vh - 54px - 144px)}
+#body{display:flex;height:calc(100vh - 54px - 96px)}
 #gp{display:grid;grid-template-columns:repeat(6,1fr);grid-template-rows:repeat(2,1fr);gap:3px;padding:3px;flex:0 0 62%;overflow:hidden}
 .gc{background:var(--bg2);border:1px solid var(--border);border-radius:4px;padding:3px 4px;display:flex;flex-direction:column;min-width:0;overflow:hidden}
 .gh{font-family:'Oswald',sans-serif;font-size:10px;font-weight:700;color:var(--gold);border-bottom:1px solid var(--border);padding-bottom:2px;margin-bottom:2px;letter-spacing:1px}
@@ -89,24 +89,28 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .cal-score-live{color:var(--live);font-weight:700;font-size:7px;animation:pulse 1.2s infinite}
 .cal-ko-label{font-size:7px;font-weight:700;font-family:'Oswald',sans-serif;color:var(--blue);background:var(--ko-bg);border-radius:2px;padding:1px 3px;letter-spacing:.5px;text-align:center;margin-top:2px}
 .cal-final{color:var(--gold)!important;background:var(--today-bg)!important}
+/* TOP SCORERS BOX (day-sized cell in calendar) */
+.cal-scorers{background:linear-gradient(160deg,rgba(0,201,122,.12),var(--bg2));border-color:var(--green)!important;justify-content:flex-start}
+.cal-sc-title{font-size:7px;font-weight:700;color:var(--green);font-family:'Oswald',sans-serif;letter-spacing:.5px;line-height:1;margin-bottom:2px;border-bottom:1px solid rgba(0,201,122,.3);padding-bottom:1px}
+.cal-sc-list{display:flex;flex-direction:column;gap:1px;flex:1;justify-content:space-evenly}
+.cal-sc-row{display:flex;align-items:center;font-size:7px;gap:2px;line-height:1.1}
+.cal-sc-rank{color:var(--gold2);font-weight:700;width:7px;flex-shrink:0;font-family:'Oswald',sans-serif}
+.cal-sc-name{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);font-family:'Oswald',sans-serif;font-weight:600}
+.cal-sc-tm{color:var(--muted);font-size:6px;flex-shrink:0}
+.cal-sc-g{color:var(--green);font-weight:700;flex-shrink:0;width:9px;text-align:right}
+.cal-sc-empty{font-size:6.5px;color:var(--muted);font-style:italic;margin-top:4px}
 
-/* TICKERS — 1.5x bigger, 3 rows */
-#tickers{height:144px;background:var(--bg2);border-top:2px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+/* TICKERS — 1.5x bigger, 2 rows */
+#tickers{height:96px;background:var(--bg2);border-top:2px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
 .trow{display:flex;align-items:center;height:48px;overflow:hidden;border-bottom:1px solid var(--border)}
 .trow:last-child{border-bottom:none}
 .tlabel{flex-shrink:0;width:150px;font-family:'Oswald',sans-serif;font-size:13px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:0 12px;border-right:2px solid var(--border);height:100%;display:flex;align-items:center}
 .tlabel.wc{color:var(--gold);background:rgba(255,215,0,.07)}.tlabel.tr{color:#ff7070;background:rgba(220,50,50,.07)}
-.tlabel.sc{color:var(--green);background:rgba(0,201,122,.07)}
 .twrap{flex:1;overflow:hidden;height:100%;display:flex;align-items:center}
 .ttrack{display:flex;align-items:center;white-space:nowrap;animation:sl 50s linear infinite}
 .ttrack.slow{animation-duration:62s}
-.ttrack.sc-track{animation-duration:40s}
 .ti{font-size:17px;padding:0 32px;color:var(--text)}
 .ti.wc::before{content:"⚽  "}.ti.tr::before{content:"🇹🇷  "}
-.ti.sc{font-family:'Oswald',sans-serif;letter-spacing:.5px}
-.sc-rank{color:var(--gold2);font-weight:700;margin-right:6px}
-.sc-goals{color:var(--green);font-weight:700;margin-left:8px}
-.sc-team{color:var(--muted);font-size:14px;margin-left:5px}
 @keyframes sl{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
 /* LOADING + ERROR */
@@ -185,10 +189,6 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
   <div class="trow">
     <div class="tlabel tr">🇹🇷 Türkiye WC</div>
     <div class="twrap"><div class="ttrack slow" id="tr-track"></div></div>
-  </div>
-  <div class="trow">
-    <div class="tlabel sc">⚽ Top Scorers</div>
-    <div class="twrap"><div class="ttrack sc-track" id="sc-track"></div></div>
   </div>
 </div>
 
@@ -362,7 +362,7 @@ function renderGroups(matches,scores){
 }
 
 // ── RENDER CALENDAR ──
-function renderCalendar(matches,scores){
+function renderCalendar(matches,scores,scorers){
   const today=new Date(); const todayPT=new Date(today.getTime()+PT_OFFSET*3600*1000);
   const tY=todayPT.getUTCFullYear(),tM=todayPT.getUTCMonth(),tD=todayPT.getUTCDate();
   const tournStart=new Date(Date.UTC(2026,5,11)), tournEnd=new Date(Date.UTC(2026,6,19));
@@ -379,10 +379,23 @@ function renderCalendar(matches,scores){
   if(anchor<tournStart) anchor=new Date(tournStart);
   // grid begins on the Sunday of the anchor's week
   const calStart=new Date(anchor); calStart.setUTCDate(calStart.getUTCDate()-anchor.getUTCDay());
-  // 3 weeks = 21 days (3 rows of 7)
-  const calEnd=new Date(calStart); calEnd.setUTCDate(calEnd.getUTCDate()+20);
+  // 3 weeks = 21 cells. First cell is the Top Scorers box, so 20 day cells follow.
+  const calEnd=new Date(calStart); calEnd.setUTCDate(calEnd.getUTCDate()+19);
 
-  let cells='';
+  // ── TOP SCORERS BOX (fixed first cell, day-sized) ──
+  let scorersBox='<div class="cal-cell cal-scorers"><div class="cal-sc-title">⚽ TOP SCORERS</div>';
+  if(scorers && scorers.length){
+    scorersBox+='<div class="cal-sc-list">';
+    scorers.slice(0,5).forEach((s,i)=>{
+      scorersBox+=`<div class="cal-sc-row"><span class="cal-sc-rank">${i+1}</span><span class="cal-sc-name">${s.name}</span><span class="cal-sc-tm">${s.team}</span><span class="cal-sc-g">${s.goals}</span></div>`;
+    });
+    scorersBox+='</div>';
+  } else {
+    scorersBox+='<div class="cal-sc-empty">Race begins soon…</div>';
+  }
+  scorersBox+='</div>';
+
+  let cells=scorersBox;
   for(let cur=new Date(calStart); cur<=calEnd; cur.setUTCDate(cur.getUTCDate()+1)){
     const inT=cur>=tournStart&&cur<=tournEnd;
     const isToday=cur.getUTCFullYear()===tY&&cur.getUTCMonth()===tM&&cur.getUTCDate()===tD;
@@ -410,9 +423,8 @@ function renderCalendar(matches,scores){
     }
     cells+=`<div class="${cls}">${moLbl}${dayNum}${content}</div>`;
   }
-  const hdr=DH.map(d=>`<div class="cal-dh">${d}</div>`).join('');
   document.getElementById('cal-panel').innerHTML=
-    `<div class="cal-wrap"><div class="cal-title">🗓 NEXT 3 WEEKS · PT<span class="cal-legend"><span class="leg-tur">■</span> Türkiye <span class="leg-today">■</span> Today <span class="leg-ko">■</span> KO</span></div><div class="cal-grid-hdr">${hdr}</div><div class="cal-grid">${cells}</div></div>`;
+    `<div class="cal-wrap"><div class="cal-title">🗓 NEXT 3 WEEKS · PT<span class="cal-legend"><span class="leg-tur">■</span> Türkiye <span class="leg-today">■</span> Today <span class="leg-ko">■</span> KO</span></div><div class="cal-grid">${cells}</div></div>`;
 }
 
 // ── NEWS ──
@@ -459,17 +471,6 @@ async function fetchScorers(){
     return out.filter(Boolean);
   }catch(e){console.warn('scorers fail',e);return [];}
 }
-function renderScorers(scorers){
-  const track=document.getElementById('sc-track');
-  if(!scorers.length){
-    track.innerHTML='<span class="ti sc">⚽ Top scorer race begins as the tournament kicks off…</span>';
-    return;
-  }
-  const items=scorers.map((s,i)=>
-    `<span class="ti sc"><span class="sc-rank">${i+1}.</span>${s.name}<span class="sc-team">${s.team}</span><span class="sc-goals">${s.goals}⚽</span></span>`
-  ).join('');
-  track.innerHTML=items+items+items; // triple for a short list to fill the loop
-}
 
 // ── CLOCK + COUNTDOWN ──
 const FINAL=new Date('2026-07-19T19:00:00Z');
@@ -501,9 +502,8 @@ async function refresh(){
     const news=await fetchNews();
     const scorers=await fetchScorers();
     renderGroups(matches,scores);
-    renderCalendar(matches,scores);
+    renderCalendar(matches,scores,scorers);
     renderNews(news);
-    renderScorers(scorers);
     const now=new Date();
     document.getElementById('upd').textContent='Updated: '+now.toLocaleTimeString()+' · ESPN';
     document.getElementById('loading').style.display='none';
