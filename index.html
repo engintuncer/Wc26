@@ -966,7 +966,7 @@ async function refresh(){
     lastGood=Date.now();
     // adaptive: live game → 1 min (faster for goal sounds), else 10 min
     const live=matches.some(m=>m.status.includes('LIVE')||m.status==='HT');
-    return live?60000:600000;
+    return live?30000:300000;
   }catch(e){
     console.error('refresh failed',e);
     eb.style.display='block';
