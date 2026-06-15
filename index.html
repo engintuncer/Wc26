@@ -60,6 +60,19 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .match.match-today{background:rgba(255,215,0,.14);border-left:2px solid var(--gold);padding-left:2px}
 .match.match-today .mt{color:#fff}
 .match.match-today .md{color:var(--gold);font-weight:700}
+/* ENLARGED LIVE GAME — pops out of the card, ~3x, overlays neighbors */
+.gc{position:relative}
+.match-live-big{position:relative;z-index:30;margin:3px -6px;padding:8px 8px;
+  background:linear-gradient(135deg,#2a0808,#1a0404);
+  border:2px solid var(--live);border-radius:6px;
+  box-shadow:0 4px 22px rgba(255,40,40,.5);
+  transform:scale(1.04);transform-origin:center}
+.mlb-tag{font-family:'Oswald',sans-serif;font-size:9px;font-weight:700;color:#fff;
+  background:var(--live);display:inline-block;padding:1px 6px;border-radius:3px;
+  letter-spacing:.5px;margin-bottom:4px;animation:pulse 1.1s infinite}
+.mlb-score{font-family:'Oswald',sans-serif;font-size:18px;font-weight:700;color:#fff;
+  letter-spacing:.5px;line-height:1.1}
+.mlb-score b{color:var(--live);font-size:21px;margin:0 3px}
 .md{color:var(--muted);font-size:7px;flex-shrink:0;width:28px}
 .mt{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:7.5px;font-family:'Oswald',sans-serif;letter-spacing:.3px}
 .mc{color:var(--muted);font-size:6.5px;flex-shrink:0;text-align:right;max-width:44px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -81,11 +94,14 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .cal-out{background:transparent;border-color:transparent}
 .cal-today{background:var(--today-bg);border:2px solid var(--gold)!important;
   transform:scale(1.5);z-index:10;position:relative;
-  box-shadow:0 0 16px rgba(255,215,0,.55);border-radius:4px}
-.cal-today .cal-day-num{color:var(--gold);font-size:10px}
-.cal-today .cal-match{font-size:9px;line-height:1.45}
+  box-shadow:0 0 16px rgba(255,215,0,.55);border-radius:4px;
+  align-items:center;text-align:center}
+.cal-today .cal-day-num{color:var(--gold);font-size:10px;text-align:center;width:100%}
+.cal-today .cal-match{font-size:9px;line-height:1.5;text-align:center;width:100%;white-space:normal;overflow:visible;text-overflow:clip}
 .cal-today .cal-vs{font-size:8px}
 .cal-today .cal-score-ft,.cal-today .cal-score-live{font-size:9px}
+.cal-today .cal-month-lbl{text-align:center;width:100%}
+.cal-today .cal-ko-label{margin-left:auto;margin-right:auto}
 .cal-today::after{content:"TODAY";position:absolute;top:-7px;right:3px;
   font-size:5.5px;font-weight:700;color:#1a1200;background:var(--gold);
   padding:0 3px;border-radius:2px;font-family:'Oswald',sans-serif;letter-spacing:.5px}
@@ -118,6 +134,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .sc-rank{color:var(--gold2);font-weight:700;margin-right:6px}
 .sc-goals{color:var(--green);font-weight:700;margin-left:8px}
 .sc-team{color:var(--muted);font-size:14px;margin-left:5px}
+.sc-club{color:var(--gold2);font-size:13px;margin-left:6px;font-style:italic}
 @keyframes sl{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
 /* LOADING + ERROR */
@@ -401,11 +418,12 @@ async function fetchAllMatches(){
         const stState=e.status?.type?.state||'';   // 'pre' | 'in' | 'post'
         const stClock=e.status?.displayClock||'';
         let status='upcoming';
-        // 'post' = finished, 'in' = live (any half/period), 'pre' = not started
-        if(stState==='post' || stName.includes('FULL_TIME') || stName.includes('FINAL') || stName.includes('FT')){
-          status='FT';
-        } else if(stName.includes('HALF_TIME') || stName.includes('HALFTIME')){
+        // ORDER MATTERS: check halftime first — 'STATUS_HALFTIME' contains the
+        // substring 'FT', so a loose FT check would mislabel it as full time.
+        if(stName.includes('HALFTIME') || stName.includes('HALF_TIME')){
           status='HT';
+        } else if(stName.includes('FULL_TIME') || stName.includes('FINAL') || stState==='post'){
+          status='FT';
         } else if(stState==='in' || stName.includes('IN_PROGRESS') || stName.includes('FIRST_HALF') || stName.includes('SECOND_HALF') || stName.includes('EXTRA') || stName.includes('PENALTIES')){
           status='LIVE '+stClock;
         }
@@ -428,7 +446,9 @@ async function fetchAllMatches(){
           for(const d of (comp.details||[])){
             const txt=d.type?.text||'';
             const clk=d.clock?.displayValue||'';
-            const nm=(d.athletesInvolved&&d.athletesInvolved[0]&&d.athletesInvolved[0].displayName)||'';
+            const ath0=(d.athletesInvolved&&d.athletesInvolved[0])||{};
+            const nm=ath0.displayName||'';
+            const aid=ath0.id||'';
             const tid=String(d.team?.id||'');
             let kind='';
             if(d.scoringPlay||txt.includes('Goal')) kind='goal';
@@ -436,7 +456,7 @@ async function fetchAllMatches(){
             else if(d.yellowCard||txt.includes('Yellow')) kind='yellow';
             if(!kind) continue;
             const side=(tid===String(homeId))?1:(tid===String(awayId)?2:0);
-            events.push({kind,clk,nm,side,pen:!!d.penaltyKick,og:!!d.ownGoal,header:txt.includes('Header')});
+            events.push({kind,clk,nm,aid,side,pen:!!d.penaltyKick,og:!!d.ownGoal,header:txt.includes('Header')});
           }
           let group='';
           for(const g in GROUPS){ if(GROUPS[g].includes(c1)&&GROUPS[g].includes(c2)){group=g;break;} }
@@ -498,7 +518,13 @@ function renderGroups(matches,scores){
       const isToday=m.ptd&&m.ptd.getFullYear()===tdY&&m.ptd.getMonth()===tdM&&m.ptd.getDate()===tdD;
       const todayCls=isToday?' match-today':'';
       const dl=m.ptd?fmtDayMon(m.ptd):'?';
-      mh+=`<div class="match ${rcls}${todayCls}"><span class="md">${dl}</span><span class="mt">${m.c1} ${badge} ${m.c2}</span><span class="mc">${m.venue}</span></div>`;
+      const isLive=sc&&(sc[2].includes('LIVE')||sc[2]==='HT');
+      if(isLive){
+        const clk=sc[2]==='HT'?'HALF TIME':sc[2].slice(4).trim();
+        mh+=`<div class="match-live-big"><div class="mlb-tag">● LIVE${clk?' '+clk:''}</div><div class="mlb-score">${m.c1} <b>${sc[0]}–${sc[1]}</b> ${m.c2}</div></div>`;
+      } else {
+        mh+=`<div class="match ${rcls}${todayCls}"><span class="md">${dl}</span><span class="mt">${m.c1} ${badge} ${m.c2}</span><span class="mc">${m.venue}</span></div>`;
+      }
     }
     html+=`<div class="gc" onclick="openGroupOverlay('${g}')"><div class="gh">GRP ${g}</div><div class="std">${std}</div><div class="div-line"></div><div class="gm">${mh}</div></div>`;
   }
@@ -584,28 +610,56 @@ function renderNews(news){
 
 // ── TOP SCORERS ──
 let LAST_SCORERS=[];   // remember last good scorers
-async function fetchScorers(){
+const CLUB_CACHE={};   // athleteId -> club abbr/name (fetched once, then cached)
+const CLUB_PENDING={};  // athleteId -> true while fetching
+
+// Compute top scorers from match goal events (accurate & instant — ESPN's own
+// leaders endpoint lags badly, so we tally goals ourselves from match details).
+function computeScorers(matches){
+  const tally={};  // name -> {goals, team, aid}
+  for(const m of matches){
+    if(!m.events||!m.events.length) continue;
+    for(const ev of m.events){
+      if(ev.kind!=='goal') continue;
+      if(ev.og) continue;                 // own goals don't count for the scorer
+      const nm=ev.nm; if(!nm||nm==='?') continue;
+      const team=ev.side===1?m.c1:(ev.side===2?m.c2:'');
+      if(!tally[nm]) tally[nm]={goals:0,team,aid:ev.aid||''};
+      tally[nm].goals++;
+      if(team && !tally[nm].team) tally[nm].team=team;
+      if(ev.aid && !tally[nm].aid) tally[nm].aid=ev.aid;
+    }
+  }
+  const arr=Object.entries(tally).map(([name,v])=>({name,goals:v.goals,team:v.team,aid:v.aid}));
+  arr.sort((a,b)=>b.goals-a.goals || a.name.localeCompare(b.name));
+  return arr.slice(0,5);
+}
+// Fetch a player's club once, cache it, then re-render when it arrives.
+async function ensureClub(aid){
+  if(!aid || CLUB_CACHE[aid]!==undefined || CLUB_PENDING[aid]) return;
+  CLUB_PENDING[aid]=true;
   try{
-    const r=await fetch('https://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/seasons/2026/types/1/leaders',{cache:'no-store'});
-    const data=await r.json();
-    const cat=(data.categories||[]).find(c=>c.name==='goalsLeaders');
-    if(!cat||!cat.leaders.length)return LAST_SCORERS;  // keep old if none
-    const top=cat.leaders.slice(0,5);
-    const out=await Promise.all(top.map(async ld=>{
-      try{
-        const aref=ld.athlete.$ref.replace('http://','https://');
-        const tref=ld.team.$ref.replace('http://','https://');
-        const [a,t]=await Promise.all([
-          fetch(aref,{cache:'no-store'}).then(r=>r.json()),
-          fetch(tref,{cache:'no-store'}).then(r=>r.json())
-        ]);
-        return {name:a.displayName||a.fullName||'?', team:t.abbreviation||'', goals:Math.round(ld.value)};
-      }catch(e){return null;}
-    }));
-    const good=out.filter(Boolean);
-    if(good.length){ LAST_SCORERS=good; return good; }
-    return LAST_SCORERS;   // all sub-fetches failed → keep last good
-  }catch(e){console.warn('scorers fail',e);return LAST_SCORERS;}
+    const ar=await fetch(`https://sports.core.api.espn.com/v2/sports/soccer/athletes/${aid}`,{cache:'force-cache'});
+    const a=await ar.json();
+    const dtRef=(a.defaultTeam&&a.defaultTeam.$ref||'').replace('http://','https://');
+    if(dtRef){
+      const tr=await fetch(dtRef,{cache:'force-cache'});
+      const t=await tr.json();
+      CLUB_CACHE[aid]=t.shortDisplayName||t.abbreviation||t.displayName||'';
+    } else {
+      CLUB_CACHE[aid]='';
+    }
+  }catch(e){ CLUB_CACHE[aid]=''; }
+  CLUB_PENDING[aid]=false;
+  // re-render scorers now that we have a club
+  if(LAST_SCORERS.length){ LAST_SCORERS_HTML=''; renderScorers(LAST_SCORERS); }
+}
+function fetchScorers(){
+  const s=computeScorers(LATEST_MATCHES);
+  if(s.length){ LAST_SCORERS=s; }
+  // kick off club lookups (cached, so each runs at most once)
+  for(const sc of LAST_SCORERS){ if(sc.aid) ensureClub(sc.aid); }
+  return LAST_SCORERS.length?LAST_SCORERS:[];
 }
 let LAST_SCORERS_HTML='';
 function renderScorers(scorers){
@@ -614,12 +668,13 @@ function renderScorers(scorers){
   if(!scorers.length){
     items='<span class="ti sc">⚽ Top scorer race begins as the tournament kicks off…</span>';
   } else {
-    items=scorers.map((s,i)=>
-      `<span class="ti sc"><span class="sc-rank">${i+1}.</span>${s.name}<span class="sc-team">${s.team}</span><span class="sc-goals">${s.goals}⚽</span></span>`
-    ).join('');
+    items=scorers.map((s,i)=>{
+      const flag=FLAG[s.team]||'';
+      const club=s.aid&&CLUB_CACHE[s.aid]?`<span class="sc-club">${CLUB_CACHE[s.aid]}</span>`:'';
+      return `<span class="ti sc"><span class="sc-rank">${i+1}.</span>${s.name}<span class="sc-team">${flag} ${s.team}</span>${club}<span class="sc-goals">${s.goals}⚽</span></span>`;
+    }).join('');
     items=items+items+items; // triple for short list to fill loop
   }
-  // only touch the DOM if content actually changed (avoids restarting the slide animation)
   if(items!==LAST_SCORERS_HTML){
     track.innerHTML=items;
     LAST_SCORERS_HTML=items;
@@ -971,14 +1026,14 @@ async function refresh(){
   try{
     const {matches,scores}=await fetchAllMatches();
     if(!matches.length) throw new Error('no matches returned');
+    LATEST_MATCHES=matches; LATEST_SCORES=scores;   // set before computing scorers
     const news=await fetchNews();
-    const scorers=await fetchScorers();
+    const scorers=fetchScorers();                   // now computed from match data
     renderGroups(matches,scores);
     renderCalendar(matches,scores);
     renderNews(news);
     renderScorers(scorers);
     checkGoalsAndFulltime(matches,scores);  // audio: goals + full-time
-    LATEST_MATCHES=matches; LATEST_SCORES=scores;
     const now=new Date();
     document.getElementById('upd').textContent='Updated: '+now.toLocaleTimeString()+' · ESPN';
     document.getElementById('loading').style.display='none';
