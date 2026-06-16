@@ -246,6 +246,8 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .lu-row{display:flex;align-items:center;gap:7px;font-size:13px;padding:2px 0}
 .lu-jersey{width:20px;color:var(--muted);font-family:'Oswald',sans-serif;text-align:center;flex-shrink:0}
 .lu-name{flex:1;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lu-namewrap{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.15}
+.lu-club{font-size:9.5px;color:var(--gold2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .lu-pos{font-size:10px;color:var(--muted);flex-shrink:0}
 .lu-out{color:var(--live);font-weight:700}
 .lu-in{color:var(--green);font-size:10px;font-weight:700}
@@ -665,21 +667,24 @@ function computeScorers(matches){
 }
 // Fetch a player's club once, cache it, then re-render when it arrives.
 async function ensureClub(aid){
-  if(!aid || CLUB_CACHE[aid]!==undefined || CLUB_PENDING[aid]) return;
-  CLUB_PENDING[aid]=true;
-  try{
-    const ar=await fetch(`https://sports.core.api.espn.com/v2/sports/soccer/athletes/${aid}`,{cache:'force-cache'});
-    const a=await ar.json();
-    const dtRef=(a.defaultTeam&&a.defaultTeam.$ref||'').replace('http://','https://');
-    if(dtRef){
-      const tr=await fetch(dtRef,{cache:'force-cache'});
-      const t=await tr.json();
-      CLUB_CACHE[aid]=t.shortDisplayName||t.abbreviation||t.displayName||'';
-    } else {
-      CLUB_CACHE[aid]='';
-    }
-  }catch(e){ CLUB_CACHE[aid]=''; }
-  CLUB_PENDING[aid]=false;
+  if(!aid || CLUB_CACHE[aid]!==undefined) return;
+  if(CLUB_PENDING[aid]){ await CLUB_PENDING[aid]; return; }  // await in-flight fetch
+  CLUB_PENDING[aid]=(async()=>{
+    try{
+      const ar=await fetch(`https://sports.core.api.espn.com/v2/sports/soccer/athletes/${aid}`,{cache:'force-cache'});
+      const a=await ar.json();
+      const dtRef=(a.defaultTeam&&a.defaultTeam.$ref||'').replace('http://','https://');
+      if(dtRef){
+        const tr=await fetch(dtRef,{cache:'force-cache'});
+        const t=await tr.json();
+        CLUB_CACHE[aid]=t.shortDisplayName||t.abbreviation||t.displayName||'';
+      } else {
+        CLUB_CACHE[aid]='';
+      }
+    }catch(e){ CLUB_CACHE[aid]=''; }
+  })();
+  await CLUB_PENDING[aid];
+  CLUB_PENDING[aid]=null;
   // re-render scorers now that we have a club
   if(LAST_SCORERS.length){ LAST_SCORERS_HTML=''; renderScorers(LAST_SCORERS); }
 }
@@ -877,19 +882,6 @@ async function openLiveOverlay(c1,c2){
     if(ev.kind==='red'){ev.side===1?r1++:ev.side===2?r2++:0;}
   }
   const s1=m.stats1||{}, s2=m.stats2||{};
-  // standings for the group
-  let stdHtml='';
-  if(m.group){
-    const ranked=calcStandings(m.group,LATEST_MATCHES);
-    stdHtml='<div class="ov-section">Group '+m.group+' Standings</div><table class="ovs-table"><thead><tr><th class="l">#</th><th class="l">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>';
-    ranked.forEach(([flag,code,s],pos)=>{
-      const gd=s.gf-s.ga;const gds=gd>0?'+'+gd:''+gd;
-      const q=pos===0?'q1':pos===1?'q2':'';
-      const hl=(code===c1||code===c2)?'style="outline:1px solid var(--live)"':'';
-      stdHtml+=`<tr class="ovs-row ${q}" ${hl}><td class="l ovs-pos">${pos+1}</td><td class="l"><span class="ovs-flag">${flag}</span> <span class="ovs-name">${fullName(code)}</span></td><td>${s.p}</td><td>${s.w}</td><td>${s.d}</td><td>${s.l}</td><td>${gds}</td><td class="ovs-pts">${s.pts}</td></tr>`;
-    });
-    stdHtml+='</tbody></table>';
-  }
   // stats section
   let statsHtml='<div class="ov-section">Match Stats</div>';
   statsHtml+=`<div class="sb-teams"><span>${flagBig(c1)} ${c1}</span><span>${c2} ${flagBig(c2)}</span></div>`;
@@ -914,15 +906,14 @@ async function openLiveOverlay(c1,c2){
     goalsHtml+='</div>';
   }
 
-  // header + placeholder for lineups (fetched async)
+  // header + lineups first, then stats, then goals
   const html=`<div class="ov-closebar" onclick="closeOverlay()">✕ &nbsp;CLOSE &nbsp;·&nbsp; tap here, outside, or the live game again</div>
     <div class="ov-title" style="color:var(--live)">● LIVE · ${clk}</div>
     <div class="ov-livescore">${flagBig(c1)} ${fullName(c1)} &nbsp;<b>${m.s1} – ${m.s2}</b>&nbsp; ${fullName(c2)} ${flagBig(c2)}</div>
-    ${statsHtml}
-    ${goalsHtml}
-    ${stdHtml}
     <div class="ov-section">Lineups</div>
-    <div id="ov-lineups"><div style="color:var(--muted);font-size:13px">Loading lineups…</div></div>`;
+    <div id="ov-lineups"><div style="color:var(--muted);font-size:13px">Loading lineups…</div></div>
+    ${statsHtml}
+    ${goalsHtml}`;
   openOverlay(html,'live:'+c1+c2);
   // fetch lineups async
   if(m.gameId) loadLineups(m.gameId,c1,c2);
@@ -935,30 +926,54 @@ async function loadLineups(gameId,c1,c2){
     const data=await r.json();
     const rosters=data.rosters||[];
     if(!rosters.length){ document.getElementById('ov-lineups').innerHTML='<div style="color:var(--muted);font-size:12px">Lineups not posted yet.</div>'; return; }
-    let cols='';
-    for(const rt of rosters){
-      const ab=CODE[rt.team?.displayName]||rt.team?.abbreviation||'';
-      const formation=rt.formation?` · ${rt.formation}`:'';
-      const roster=rt.roster||[];
-      const starters=roster.filter(p=>p.starter);
-      const subs=roster.filter(p=>!p.starter);
-      let xi=starters.map(p=>{
-        const nm=p.athlete?.displayName||'?';
-        const pos=p.position?.abbreviation||'';
-        const out=p.subbedOut?' <span class="lu-out">↓</span>':'';
-        return `<div class="lu-row"><span class="lu-jersey">${p.jersey||''}</span><span class="lu-name">${nm}</span><span class="lu-pos">${pos}</span>${out}</div>`;
-      }).join('');
-      // subs who came on
-      let subsIn=subs.filter(p=>p.subbedIn).map(p=>{
-        const nm=p.athlete?.displayName||'?';
-        return `<div class="lu-row lu-sub"><span class="lu-jersey">${p.jersey||''}</span><span class="lu-name">${nm}</span><span class="lu-in">↑ in</span></div>`;
-      }).join('');
-      cols+=`<div class="lu-col"><div class="lu-team">${flagBig(ab)} ${ab}${formation}</div>${xi}${subsIn?'<div class="lu-subhdr">Substitutes In</div>'+subsIn:''}</div>`;
-    }
-    document.getElementById('ov-lineups').innerHTML=`<div class="lu-grid">${cols}</div>`;
+    LIVE_ROSTERS=rosters;   // store so we can re-render when clubs arrive
+    renderLineups(rosters);
+    // fetch clubs for every player in the background, re-render as they arrive
+    const ids=[];
+    for(const rt of rosters) for(const p of (rt.roster||[])){ const id=p.athlete?.id; if(id) ids.push(id); }
+    let reRenderTimer=null;
+    const scheduleReRender=()=>{
+      if(reRenderTimer) return;
+      reRenderTimer=setTimeout(()=>{
+        reRenderTimer=null;
+        if(CUR_OVERLAY && CUR_OVERLAY.startsWith('live:') && LIVE_ROSTERS) renderLineups(LIVE_ROSTERS);
+      },400);
+    };
+    for(const id of ids){ ensureClub(id).then(scheduleReRender); }
   }catch(e){
     document.getElementById('ov-lineups').innerHTML='<div style="color:var(--muted);font-size:12px">Unable to load lineups.</div>';
   }
+}
+let LIVE_ROSTERS=null;
+function clubOf(p){
+  const id=p.athlete?.id;
+  return (id&&CLUB_CACHE[id])?CLUB_CACHE[id]:'';
+}
+function renderLineups(rosters){
+  const el=document.getElementById('ov-lineups');
+  if(!el) return;
+  let cols='';
+  for(const rt of rosters){
+    const ab=CODE[rt.team?.displayName]||rt.team?.abbreviation||'';
+    const formation=rt.formation?` · ${rt.formation}`:'';
+    const roster=rt.roster||[];
+    const starters=roster.filter(p=>p.starter);
+    const subs=roster.filter(p=>!p.starter);
+    const xi=starters.map(p=>{
+      const nm=p.athlete?.displayName||'?';
+      const pos=p.position?.abbreviation||'';
+      const club=clubOf(p);
+      const out=p.subbedOut?' <span class="lu-out">↓</span>':'';
+      return `<div class="lu-row"><span class="lu-jersey">${p.jersey||''}</span><span class="lu-namewrap"><span class="lu-name">${nm}</span>${club?`<span class="lu-club">${club}</span>`:''}</span><span class="lu-pos">${pos}</span>${out}</div>`;
+    }).join('');
+    const subsIn=subs.filter(p=>p.subbedIn).map(p=>{
+      const nm=p.athlete?.displayName||'?';
+      const club=clubOf(p);
+      return `<div class="lu-row lu-sub"><span class="lu-jersey">${p.jersey||''}</span><span class="lu-namewrap"><span class="lu-name">${nm}</span>${club?`<span class="lu-club">${club}</span>`:''}</span><span class="lu-in">↑ in</span></div>`;
+    }).join('');
+    cols+=`<div class="lu-col"><div class="lu-team">${flagBig(ab)} ${ab}${formation}</div>${xi}${subsIn?'<div class="lu-subhdr">Substitutes In</div>'+subsIn:''}</div>`;
+  }
+  el.innerHTML=`<div class="lu-grid">${cols}</div>`;
 }
 
 // close on Escape
