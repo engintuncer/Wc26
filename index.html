@@ -64,9 +64,11 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .gc{position:relative}
 .match-live-big{position:relative;z-index:30;margin:3px -6px;padding:8px 8px;
   background:linear-gradient(135deg,#2a0808,#1a0404);
-  border:2px solid var(--live);border-radius:6px;
+  border:2px solid var(--live);border-radius:6px;cursor:pointer;
   box-shadow:0 4px 22px rgba(255,40,40,.5);
   transform:scale(1.04);transform-origin:center}
+.match-live-big:hover{box-shadow:0 4px 26px rgba(255,60,60,.75)}
+.mlb-hint{font-size:7px;color:#ff9a9a;text-align:center;margin-top:3px;letter-spacing:.5px;text-transform:uppercase}
 .mlb-tag{font-family:'Oswald',sans-serif;font-size:9px;font-weight:700;color:#fff;
   background:var(--live);display:inline-block;padding:1px 6px;border-radius:3px;
   letter-spacing:.5px;margin-bottom:4px;animation:pulse 1.1s infinite}
@@ -226,6 +228,29 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .ovt-side2 .ovt-min{text-align:left}
 .ovt-name{color:var(--text)}
 .ov-hint{text-align:center;font-size:11px;color:var(--muted);margin-top:14px}
+/* live overlay */
+.ov-livescore{font-family:'Oswald',sans-serif;font-size:26px;font-weight:700;color:#fff;text-align:center;margin:6px 0 4px}
+.ov-livescore b{color:var(--live);font-size:30px;margin:0 6px}
+.sb-teams{display:flex;justify-content:space-between;font-family:'Oswald',sans-serif;font-size:14px;color:var(--gold);margin-bottom:8px}
+.sb-row{display:flex;align-items:center;gap:8px;margin-top:8px}
+.sb-v{font-family:'Oswald',sans-serif;font-size:14px;font-weight:700;color:#fff;width:42px;text-align:center;flex-shrink:0}
+.sb-track{flex:1;display:flex;height:9px;border-radius:5px;overflow:hidden;background:#0a1322}
+.sb-fill{height:100%}
+.sb-l{background:var(--gold)}
+.sb-r{background:var(--blue)}
+.sb-label{text-align:center;font-size:11px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
+/* lineups */
+.lu-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.lu-col{min-width:0}
+.lu-team{font-family:'Oswald',sans-serif;font-size:15px;font-weight:700;color:var(--gold);margin-bottom:6px;border-bottom:1px solid var(--border);padding-bottom:4px}
+.lu-row{display:flex;align-items:center;gap:7px;font-size:13px;padding:2px 0}
+.lu-jersey{width:20px;color:var(--muted);font-family:'Oswald',sans-serif;text-align:center;flex-shrink:0}
+.lu-name{flex:1;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lu-pos{font-size:10px;color:var(--muted);flex-shrink:0}
+.lu-out{color:var(--live);font-weight:700}
+.lu-in{color:var(--green);font-size:10px;font-weight:700}
+.lu-sub{opacity:.85}
+.lu-subhdr{font-size:10px;color:var(--gold2);text-transform:uppercase;letter-spacing:.5px;margin:8px 0 3px;font-family:'Oswald',sans-serif}
 .gc{cursor:pointer;transition:transform .1s,border-color .1s}
 .gc:hover{border-color:var(--gold);transform:translateY(-1px)}
 .cal-cell:not(.cal-out){cursor:pointer}
@@ -461,7 +486,11 @@ async function fetchAllMatches(){
           let group='';
           for(const g in GROUPS){ if(GROUPS[g].includes(c1)&&GROUPS[g].includes(c2)){group=g;break;} }
           const ptd=utc?toLocal(utc):null;
-          matches.push({c1,c2,ptd,venue:shortVenue(city),stadium,city,group,s1,s2,status,form1,form2,bcast,events});
+          // per-team statistics (possession, shots, etc.)
+          const statsOf=(c)=>{const o={};for(const s of (c.statistics||[]))o[s.name]=s.displayValue;return o;};
+          const stats1=statsOf(home), stats2=statsOf(away);
+          const gameId=e.id||comp.id||'';
+          matches.push({c1,c2,ptd,venue:shortVenue(city),stadium,city,group,s1,s2,status,form1,form2,bcast,events,stats1,stats2,gameId});
           scores[c1+'_'+c2]=[s1,s2,status];
           scores[c2+'_'+c1]=[s2,s1,status];
         }
@@ -521,7 +550,7 @@ function renderGroups(matches,scores){
       const isLive=sc&&(sc[2].includes('LIVE')||sc[2]==='HT');
       if(isLive){
         const clk=sc[2]==='HT'?'HALF TIME':sc[2].slice(4).trim();
-        mh+=`<div class="match-live-big"><div class="mlb-tag">● LIVE${clk?' '+clk:''}</div><div class="mlb-score">${m.c1} <b>${sc[0]}–${sc[1]}</b> ${m.c2}</div></div>`;
+        mh+=`<div class="match-live-big" onclick="event.stopPropagation();openLiveOverlay('${m.c1}','${m.c2}')"><div class="mlb-tag">● LIVE${clk?' '+clk:''}</div><div class="mlb-score">${m.c1} <b>${sc[0]}–${sc[1]}</b> ${m.c2}</div><div class="mlb-hint">tap for stats</div></div>`;
       } else {
         mh+=`<div class="match ${rcls}${todayCls}"><span class="md">${dl}</span><span class="mt">${m.c1} ${badge} ${m.c2}</span><span class="mc">${m.venue}</span></div>`;
       }
@@ -820,6 +849,116 @@ function openDayOverlay(dateKey){
     <div class="ov-sub">${dayMatches.length} match${dayMatches.length===1?'':'es'} · times in ${tzLabel}</div>
     ${body}`;
   openOverlay(html,'day:'+dateKey);
+}
+
+// ── LIVE MATCH OVERLAY (stats + standings + lineups) ──
+function statBar(label,v1,v2,isPct){
+  const n1=parseFloat(v1)||0, n2=parseFloat(v2)||0;
+  const tot=n1+n2;
+  let p1=isPct?n1:(tot?Math.round(n1/tot*100):50);
+  let p2=100-p1;
+  const d1=isPct?`${n1}%`:v1, d2=isPct?`${n2}%`:v2;
+  return `<div class="sb-row">
+    <span class="sb-v">${d1??0}</span>
+    <div class="sb-track"><div class="sb-fill sb-l" style="width:${p1}%"></div><div class="sb-fill sb-r" style="width:${p2}%"></div></div>
+    <span class="sb-v">${d2??0}</span>
+  </div><div class="sb-label">${label}</div>`;
+}
+
+async function openLiveOverlay(c1,c2){
+  if(CUR_OVERLAY==='live:'+c1+c2){ closeOverlay(); return; }
+  const m=LATEST_MATCHES.find(x=>x.c1===c1&&x.c2===c2);
+  if(!m){ return; }
+  const clk=m.status==='HT'?'HALF TIME':(m.status.startsWith('LIVE')?m.status.slice(4).trim():'LIVE');
+  // count cards from events
+  let y1=0,y2=0,r1=0,r2=0;
+  for(const ev of (m.events||[])){
+    if(ev.kind==='yellow'){ev.side===1?y1++:ev.side===2?y2++:0;}
+    if(ev.kind==='red'){ev.side===1?r1++:ev.side===2?r2++:0;}
+  }
+  const s1=m.stats1||{}, s2=m.stats2||{};
+  // standings for the group
+  let stdHtml='';
+  if(m.group){
+    const ranked=calcStandings(m.group,LATEST_MATCHES);
+    stdHtml='<div class="ov-section">Group '+m.group+' Standings</div><table class="ovs-table"><thead><tr><th class="l">#</th><th class="l">Team</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>Pts</th></tr></thead><tbody>';
+    ranked.forEach(([flag,code,s],pos)=>{
+      const gd=s.gf-s.ga;const gds=gd>0?'+'+gd:''+gd;
+      const q=pos===0?'q1':pos===1?'q2':'';
+      const hl=(code===c1||code===c2)?'style="outline:1px solid var(--live)"':'';
+      stdHtml+=`<tr class="ovs-row ${q}" ${hl}><td class="l ovs-pos">${pos+1}</td><td class="l"><span class="ovs-flag">${flag}</span> <span class="ovs-name">${fullName(code)}</span></td><td>${s.p}</td><td>${s.w}</td><td>${s.d}</td><td>${s.l}</td><td>${gds}</td><td class="ovs-pts">${s.pts}</td></tr>`;
+    });
+    stdHtml+='</tbody></table>';
+  }
+  // stats section
+  let statsHtml='<div class="ov-section">Match Stats</div>';
+  statsHtml+=`<div class="sb-teams"><span>${flagBig(c1)} ${c1}</span><span>${c2} ${flagBig(c2)}</span></div>`;
+  if(s1.possessionPct||s2.possessionPct) statsHtml+=statBar('Possession',s1.possessionPct||0,s2.possessionPct||0,true);
+  if(s1.totalShots||s2.totalShots) statsHtml+=statBar('Shots',s1.totalShots||0,s2.totalShots||0,false);
+  if(s1.shotsOnTarget||s2.shotsOnTarget) statsHtml+=statBar('Shots on Target',s1.shotsOnTarget||0,s2.shotsOnTarget||0,false);
+  if(s1.wonCorners||s2.wonCorners) statsHtml+=statBar('Corners',s1.wonCorners||0,s2.wonCorners||0,false);
+  if(s1.foulsCommitted||s2.foulsCommitted) statsHtml+=statBar('Fouls',s1.foulsCommitted||0,s2.foulsCommitted||0,false);
+  statsHtml+=statBar('Yellow Cards 🟨',y1,y2,false);
+  if(r1||r2) statsHtml+=statBar('Red Cards 🟥',r1,r2,false);
+
+  // goal timeline
+  let goalsHtml='';
+  const goals=(m.events||[]).filter(ev=>ev.kind==='goal');
+  if(goals.length){
+    goalsHtml='<div class="ov-section">Goals</div><div class="ovm-timeline">';
+    for(const ev of goals){
+      const side=ev.side===2?' ovt-side2':'';
+      const extra=ev.pen?' (pen)':ev.og?' (OG)':'';
+      goalsHtml+=`<div class="ovt-row${side}"><span class="ovt-min">${ev.clk}</span><span class="ovt-ico">⚽</span><span class="ovt-name">${ev.nm}${extra}</span></div>`;
+    }
+    goalsHtml+='</div>';
+  }
+
+  // header + placeholder for lineups (fetched async)
+  const html=`<div class="ov-closebar" onclick="closeOverlay()">✕ &nbsp;CLOSE &nbsp;·&nbsp; tap here, outside, or the live game again</div>
+    <div class="ov-title" style="color:var(--live)">● LIVE · ${clk}</div>
+    <div class="ov-livescore">${flagBig(c1)} ${fullName(c1)} &nbsp;<b>${m.s1} – ${m.s2}</b>&nbsp; ${fullName(c2)} ${flagBig(c2)}</div>
+    ${statsHtml}
+    ${goalsHtml}
+    ${stdHtml}
+    <div class="ov-section">Lineups</div>
+    <div id="ov-lineups"><div style="color:var(--muted);font-size:13px">Loading lineups…</div></div>`;
+  openOverlay(html,'live:'+c1+c2);
+  // fetch lineups async
+  if(m.gameId) loadLineups(m.gameId,c1,c2);
+  else document.getElementById('ov-lineups').innerHTML='<div style="color:var(--muted);font-size:12px">Lineups unavailable.</div>';
+}
+
+async function loadLineups(gameId,c1,c2){
+  try{
+    const r=await fetch(`https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/summary?event=${gameId}`,{cache:'no-store'});
+    const data=await r.json();
+    const rosters=data.rosters||[];
+    if(!rosters.length){ document.getElementById('ov-lineups').innerHTML='<div style="color:var(--muted);font-size:12px">Lineups not posted yet.</div>'; return; }
+    let cols='';
+    for(const rt of rosters){
+      const ab=CODE[rt.team?.displayName]||rt.team?.abbreviation||'';
+      const formation=rt.formation?` · ${rt.formation}`:'';
+      const roster=rt.roster||[];
+      const starters=roster.filter(p=>p.starter);
+      const subs=roster.filter(p=>!p.starter);
+      let xi=starters.map(p=>{
+        const nm=p.athlete?.displayName||'?';
+        const pos=p.position?.abbreviation||'';
+        const out=p.subbedOut?' <span class="lu-out">↓</span>':'';
+        return `<div class="lu-row"><span class="lu-jersey">${p.jersey||''}</span><span class="lu-name">${nm}</span><span class="lu-pos">${pos}</span>${out}</div>`;
+      }).join('');
+      // subs who came on
+      let subsIn=subs.filter(p=>p.subbedIn).map(p=>{
+        const nm=p.athlete?.displayName||'?';
+        return `<div class="lu-row lu-sub"><span class="lu-jersey">${p.jersey||''}</span><span class="lu-name">${nm}</span><span class="lu-in">↑ in</span></div>`;
+      }).join('');
+      cols+=`<div class="lu-col"><div class="lu-team">${flagBig(ab)} ${ab}${formation}</div>${xi}${subsIn?'<div class="lu-subhdr">Substitutes In</div>'+subsIn:''}</div>`;
+    }
+    document.getElementById('ov-lineups').innerHTML=`<div class="lu-grid">${cols}</div>`;
+  }catch(e){
+    document.getElementById('ov-lineups').innerHTML='<div style="color:var(--muted);font-size:12px">Unable to load lineups.</div>';
+  }
 }
 
 // close on Escape
