@@ -131,7 +131,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
 .ttrack.slow{animation-duration:62s}
 .ttrack.sc-track{animation-duration:42s}
 .ti{font-size:17px;padding:0 32px;color:var(--text)}
-.ti.wc::before{content:"⚽  "}.ti.tr::before{content:"🇹🇷  "}
+.ti.wc::before{content:"⚽  "}.ti.tr::before{content:"📊  "}
 .ti.sc{font-family:'Oswald',sans-serif;letter-spacing:.5px}
 .sc-rank{color:var(--gold2);font-weight:700;margin-right:6px}
 .sc-goals{color:var(--green);font-weight:700;margin-left:8px}
@@ -333,7 +333,7 @@ html,body{width:100%;height:100%;background:var(--bg);color:var(--text);
     <div class="twrap"><div class="ttrack" id="wc-track"></div></div>
   </div>
   <div class="trow">
-    <div class="tlabel tr">🇹🇷 Türkiye WC</div>
+    <div class="tlabel tr">📊 Top 10 Teams</div>
     <div class="twrap"><div class="ttrack slow" id="tr-track"></div></div>
   </div>
   <div class="trow">
@@ -617,26 +617,72 @@ function renderCalendar(matches,scores){
     `<div class="cal-wrap"><div class="cal-title">🗓 NEXT 3 WEEKS · ${tzLabel}<span class="cal-legend"><span class="leg-tur">■</span> Türkiye <span class="leg-today">■</span> Today <span class="leg-ko">■</span> KO</span></div><div class="cal-grid-hdr">${hdr}</div><div class="cal-grid">${cells}</div></div>`;
 }
 
-// ── NEWS ──
+// ── NEWS & TOP 10 LEADERBOARD GENERATION ──
 async function fetchNews(){
-  let wc=[], tr=[];
+  let wc=[];
   try{
     const r=await fetch(ESPN_NEWS,{cache:'no-store'}); const data=await r.json();
     const arts=data.articles||[];
     for(const a of arts){
-      const h=a.headline||''; const desc=a.description||'';
-      if(/turk|türk|çalhan|montella|socceroos.*türk/i.test(h+desc)) tr.push(h);
-      wc.push(h);
+      wc.push(a.headline||'');
     }
   }catch(e){console.warn('news fail',e);}
   if(!wc.length)wc=["Mexico opens WC26 with 2-0 win over South Africa","USMNT crush Paraguay in opener","Canada draw 1-1 with Bosnia","World Cup 2026 underway across North America","48 teams competing in expanded format"];
-  if(!tr.length)tr=["Türkiye face Australia in Group D opener","Çalhanoğlu leads Türkiye at World Cup 2026","Türkiye vs USA Group D decider Jun 25","Montella's side ready to surprise","Turkish fans flock to North America"];
-  return {wc:wc.slice(0,10),tr:tr.slice(0,10)};
+  return {wc:wc.slice(0,10)};
 }
+
+function computeTop10Teams(matches) {
+  const globalSt = {};
+  // Create stats placeholders for all 48 teams mapped in GROUPS
+  for (const g in GROUPS) {
+    GROUPS[g].forEach(c => globalSt[c] = { p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 });
+  }
+  // Tally rules calculated from matches array parameters
+  for (const m of matches) {
+    if (m.status === 'upcoming' || m.s1 == null || m.s2 == null) continue;
+    const { c1, c2, s1, s2 } = m;
+    if (!globalSt[c1] || !globalSt[c2]) continue;
+    
+    globalSt[c1].p++; globalSt[c2].p++;
+    globalSt[c1].gf += s1; globalSt[c1].ga += s2;
+    globalSt[c2].gf += s2; globalSt[c2].ga += s1;
+    
+    if (s1 > s2) { globalSt[c1].w++; globalSt[c1].pts += 3; globalSt[c2].l++; } 
+    else if (s2 > s1) { globalSt[c2].w++; globalSt[c2].pts += 3; globalSt[c1].l++; } 
+    else { globalSt[c1].d++; globalSt[c1].pts++; globalSt[c2].d++; globalSt[c2].pts++; }
+  }
+  
+  // Convert map to sortable object profiles
+  const teamPool = Object.entries(globalSt).map(([code, s]) => ({
+    code,
+    ...s,
+    gd: s.gf - s.ga
+  })).filter(t => t.p > 0); // Only list teams that have played active matches
+
+  // Sorting system layout matching requirements: Points primary driver, GD secondary driver
+  teamPool.sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
+  return teamPool.slice(0, 10);
+}
+
 function renderNews(news){
   const mk=(items,cls)=>{const s=items.map(h=>`<span class="ti ${cls}">${h}</span>`).join('');return s+s;};
   document.getElementById('wc-track').innerHTML=mk(news.wc,'wc');
-  document.getElementById('tr-track').innerHTML=mk(news.tr,'tr');
+  
+  // Calculate and populate the top 10 dynamic standings ticker row
+  const topTeams = computeTop10Teams(LATEST_MATCHES);
+  let trHtml = '';
+  if (!topTeams.length) {
+    trHtml = '<span class="ti tr">📊 Top 10 Team Leaderboard updates live once tournament tracking begins...</span>';
+    trHtml = trHtml + trHtml;
+  } else {
+    trHtml = topTeams.map((t, idx) => {
+      const flag = FLAG[t.code] || '';
+      const sign = t.gd > 0 ? '+' : '';
+      return `<span class="ti tr"><b style="color:var(--gold)">#${idx+1}</b> ${flag} ${t.code} — ${t.pts} Pts <span style="color:var(--muted); font-size: 14px;">(GD: ${sign}${t.gd})</span></span>`;
+    }).join('');
+    trHtml = trHtml + trHtml; // Loop duplication pattern matching ticker structures
+  }
+  document.getElementById('tr-track').innerHTML = trHtml;
 }
 
 // ── TOP SCORERS ──
